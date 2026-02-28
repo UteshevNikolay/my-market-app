@@ -9,7 +9,7 @@ spring:
     driver-class-name: org.postgresql.Driver
   liquibase:
     change-log: classpath:db/changelog/db.changelog-master.yml
-    enabled: false
+    enabled: true
 
 logging:
   level:
