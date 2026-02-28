@@ -7,6 +7,8 @@ import com.my.project.mymarketapp.entity.Item;
 import com.my.project.mymarketapp.mapper.ItemMapper;
 import com.my.project.mymarketapp.repository.CartItemRepository;
 import com.my.project.mymarketapp.repository.ItemRepository;
+import java.util.List;
+import java.util.Optional;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
@@ -16,9 +18,6 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
-
-import java.util.List;
-import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
@@ -42,28 +41,6 @@ class ItemsServiceTest {
 
     @InjectMocks
     private ItemsService itemsService;
-
-    // ---------------------------------------------------------------------------
-    // Helper methods
-    // ---------------------------------------------------------------------------
-
-    private Item buildItem(long id, String title, Integer price) {
-        Item item = new Item();
-        item.setId(id);
-        item.setTitle(title);
-        item.setDescription("desc-" + id);
-        item.setPrice(price);
-        item.setImgPath("img-" + id + ".png");
-        return item;
-    }
-
-    private ItemDto buildItemDto(long id) {
-        return new ItemDto(id, "title-" + id, "desc-" + id, 100, "img-" + id + ".png", 0);
-    }
-
-    // ---------------------------------------------------------------------------
-    // getItems tests
-    // ---------------------------------------------------------------------------
 
     @Test
     void getItems_returnsChunkedRows() {
@@ -148,10 +125,6 @@ class ItemsServiceTest {
         assertThat(captured.getSort()).isEqualTo(Sort.by("price"));
     }
 
-    // ---------------------------------------------------------------------------
-    // getItemById tests
-    // ---------------------------------------------------------------------------
-
     @Test
     void getItemById_found() {
         Item item = buildItem(10L, "Widget", 99);
@@ -180,10 +153,6 @@ class ItemsServiceTest {
         assertThat(result).isEqualTo(ItemDto.empty());
         verify(itemMapper, never()).toDto(any(), any());
     }
-
-    // ---------------------------------------------------------------------------
-    // updateItemCount tests
-    // ---------------------------------------------------------------------------
 
     @Test
     void updateItemCount_plusNewItem() {
@@ -250,10 +219,6 @@ class ItemsServiceTest {
         verify(cartItemRepository, never()).save(any());
     }
 
-    // ---------------------------------------------------------------------------
-    // getPaging tests
-    // ---------------------------------------------------------------------------
-
     @Test
     void getPaging_returnsPagingDto() {
         @SuppressWarnings("unchecked")
@@ -269,5 +234,19 @@ class ItemsServiceTest {
         assertThat(result.pageSize()).isEqualTo(8);
         assertThat(result.hasPrevious()).isTrue();
         assertThat(result.hasNext()).isFalse();
+    }
+
+    private Item buildItem(long id, String title, Integer price) {
+        Item item = new Item();
+        item.setId(id);
+        item.setTitle(title);
+        item.setDescription("desc-" + id);
+        item.setPrice(price);
+        item.setImgPath("img-" + id + ".png");
+        return item;
+    }
+
+    private ItemDto buildItemDto(long id) {
+        return new ItemDto(id, "title-" + id, "desc-" + id, 100, "img-" + id + ".png", 0);
     }
 }

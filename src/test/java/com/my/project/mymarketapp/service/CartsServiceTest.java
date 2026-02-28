@@ -39,32 +39,6 @@ class CartsServiceTest {
     @InjectMocks
     private CartsService cartsService;
 
-    // ---------------------------------------------------------------------------
-    // Helper methods
-    // ---------------------------------------------------------------------------
-
-    private Item buildItem(long id, String title, Integer price) {
-        Item item = new Item();
-        item.setId(id);
-        item.setTitle(title);
-        item.setDescription("desc-" + id);
-        item.setPrice(price);
-        item.setImgPath("img-" + id + ".png");
-        return item;
-    }
-
-    private CartItem buildCartItem(long cartItemId, Item item, int count) {
-        CartItem cartItem = new CartItem();
-        cartItem.setId(cartItemId);
-        cartItem.setItem(item);
-        cartItem.setCount(count);
-        return cartItem;
-    }
-
-    // ---------------------------------------------------------------------------
-    // getCartItems tests
-    // ---------------------------------------------------------------------------
-
     @Test
     void getCartItems_returnsMappedItems() {
         Item item1 = buildItem(1L, "Item One", 100);
@@ -96,10 +70,6 @@ class CartsServiceTest {
         assertThat(result).isEmpty();
         verify(itemMapper, never()).toDto(any(), any());
     }
-
-    // ---------------------------------------------------------------------------
-    // updateCartItem tests
-    // ---------------------------------------------------------------------------
 
     @Test
     void updateCartItem_plus() {
@@ -167,10 +137,6 @@ class CartsServiceTest {
         verify(cartItemRepository, never()).delete(any(CartItem.class));
     }
 
-    // ---------------------------------------------------------------------------
-    // getTotal tests
-    // ---------------------------------------------------------------------------
-
     @Test
     void getTotal_calculatesSum() {
         Item item1 = buildItem(1L, "A", 100);
@@ -194,10 +160,6 @@ class CartsServiceTest {
 
         assertThat(total).isEqualTo(0);
     }
-
-    // ---------------------------------------------------------------------------
-    // createOrder tests
-    // ---------------------------------------------------------------------------
 
     @Test
     void createOrder_createsOrderAndClearsCart() {
@@ -249,5 +211,23 @@ class CartsServiceTest {
         ArgumentCaptor<List<CartItem>> deleteCaptor = ArgumentCaptor.forClass(List.class);
         verify(cartItemRepository).deleteAll(deleteCaptor.capture());
         assertThat(deleteCaptor.getValue()).containsExactlyInAnyOrderElementsOf(cartItems);
+    }
+
+    private Item buildItem(long id, String title, Integer price) {
+        Item item = new Item();
+        item.setId(id);
+        item.setTitle(title);
+        item.setDescription("desc-" + id);
+        item.setPrice(price);
+        item.setImgPath("img-" + id + ".png");
+        return item;
+    }
+
+    private CartItem buildCartItem(long cartItemId, Item item, int count) {
+        CartItem cartItem = new CartItem();
+        cartItem.setId(cartItemId);
+        cartItem.setItem(item);
+        cartItem.setCount(count);
+        return cartItem;
     }
 }

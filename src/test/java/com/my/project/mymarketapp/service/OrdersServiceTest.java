@@ -5,14 +5,13 @@ import com.my.project.mymarketapp.dto.OrderDto;
 import com.my.project.mymarketapp.entity.Order;
 import com.my.project.mymarketapp.mapper.OrderMapper;
 import com.my.project.mymarketapp.repository.OrderRepository;
+import java.util.List;
+import java.util.Optional;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-
-import java.util.List;
-import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -29,24 +28,6 @@ class OrdersServiceTest {
 
     @InjectMocks
     private OrdersService ordersService;
-
-    // ---------------------------------------------------------------------------
-    // Helper methods
-    // ---------------------------------------------------------------------------
-
-    private Order buildOrder(long id) {
-        Order order = new Order();
-        order.setId(id);
-        return order;
-    }
-
-    private OrderDto buildOrderDto(long id) {
-        return new OrderDto(id, List.of(new ItemDto(1L, "title-" + id, "desc-" + id, 100, "img-" + id + ".png", 1)), 100);
-    }
-
-    // ---------------------------------------------------------------------------
-    // getAllOrders tests
-    // ---------------------------------------------------------------------------
 
     @Test
     void getAllOrders_returnsMappedOrders() {
@@ -74,10 +55,6 @@ class OrdersServiceTest {
         assertThat(result).isEmpty();
     }
 
-    // ---------------------------------------------------------------------------
-    // getOrderById tests
-    // ---------------------------------------------------------------------------
-
     @Test
     void getOrderById_found() {
         Order order = buildOrder(10L);
@@ -99,4 +76,16 @@ class OrdersServiceTest {
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("99");
     }
+
+    private Order buildOrder(long id) {
+        Order order = new Order();
+        order.setId(id);
+        return order;
+    }
+
+    private OrderDto buildOrderDto(long id) {
+        return new OrderDto(id, List.of(new ItemDto(1L, "title-" + id, "desc-" + id, 100,
+                "img-" + id + ".png", 1)), 100);
+    }
+
 }

@@ -5,16 +5,15 @@ import com.my.project.mymarketapp.dto.OrderDto;
 import com.my.project.mymarketapp.repository.CartItemRepository;
 import com.my.project.mymarketapp.repository.OrderItemRepository;
 import com.my.project.mymarketapp.repository.OrderRepository;
+import java.util.List;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.context.annotation.Import;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
-
-import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
@@ -46,30 +45,6 @@ class OrdersControllerIntegrationTest {
         orderItemRepository.deleteAll();
         orderRepository.deleteAll();
         cartItemRepository.deleteAll();
-    }
-
-    /**
-     * Helper: adds item with the given id to the cart, then calls POST /buy and returns the order id
-     * extracted from the redirect Location header.
-     */
-    private Long addItemAndBuy(long itemId) throws Exception {
-        mockMvc.perform(post("/items")
-                        .param("id", String.valueOf(itemId))
-                        .param("action", "PLUS"))
-                .andExpect(status().is3xxRedirection());
-
-        MvcResult buyResult = mockMvc.perform(post("/buy"))
-                .andExpect(status().is3xxRedirection())
-                .andReturn();
-
-        // Location header is like: /orders/42?newOrder=true
-        String location = buyResult.getResponse().getHeader("Location");
-        assertThat(location).isNotNull();
-
-        // Extract the numeric order id from the redirect URL
-        String path = location.contains("?") ? location.substring(0, location.indexOf('?')) : location;
-        String idStr = path.substring(path.lastIndexOf('/') + 1);
-        return Long.parseLong(idStr);
     }
 
     @Test
@@ -119,5 +94,26 @@ class OrdersControllerIntegrationTest {
         assertThat(order.items()).isNotEmpty();
         assertThat(order.totalSum()).isGreaterThan(0);
         assertThat(newOrder).isFalse();
+    }
+
+    private Long addItemAndBuy(long itemId) throws Exception {
+        mockMvc.perform(post("/items")
+                        .param("id", String.valueOf(itemId))
+                        .param("action", "PLUS"))
+                .andExpect(status().is3xxRedirection());
+
+        MvcResult buyResult = mockMvc.perform(post("/buy"))
+                .andExpect(status().is3xxRedirection())
+                .andReturn();
+
+        // Location header is like: /orders/42?newOrder=true
+        String location = buyResult.getResponse().getHeader("Location");
+        assertThat(location).isNotNull();
+
+        // Extract the numeric order id from the redirect URL
+        String path = location.contains("?") ? location.substring(0, location.indexOf('?')) :
+                location;
+        String idStr = path.substring(path.lastIndexOf('/') + 1);
+        return Long.parseLong(idStr);
     }
 }
