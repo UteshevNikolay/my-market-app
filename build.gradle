@@ -55,7 +55,7 @@ tasks.named('test') {
 
 tasks.named('bootJar') {
     archiveFileName = "${project.name}-${project.version}.jar"
-    mainClass = 'com.my.project.mymarketapp.MymarketappApplication'
+    mainClass = 'com.my.project.mymarketapp.MyMarketAppApplication'
 }
 
 tasks.named('jar') {

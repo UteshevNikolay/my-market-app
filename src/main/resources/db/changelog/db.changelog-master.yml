@@ -2,7 +2,7 @@ databaseChangeLog:
 
   - changeSet:
       id: 1-create-item-table
-      author: dev
+      author: nikolaiu
       changes:
         - createTable:
             tableName: item
@@ -36,7 +36,7 @@ databaseChangeLog:
 
   - changeSet:
       id: 2-create-cart-item-table
-      author: dev
+      author: nikolaiu
       changes:
         - createTable:
             tableName: cart_item
@@ -62,7 +62,7 @@ databaseChangeLog:
 
   - changeSet:
       id: 3-create-customer-order-table
-      author: dev
+      author: nikolaiu
       changes:
         - createTable:
             tableName: customer_order
@@ -76,7 +76,7 @@ databaseChangeLog:
 
   - changeSet:
       id: 4-create-order-item-table
-      author: dev
+      author: nikolaiu
       changes:
         - createTable:
             tableName: order_item
@@ -114,7 +114,7 @@ databaseChangeLog:
 
   - changeSet:
       id: 5-seed-items
-      author: dev
+      author: nikolaiu
       changes:
         - insert:
             tableName: item
