@@ -1,7 +1,5 @@
 # My Market App
 
-E-commerce marketplace where users browse products, manage a shopping cart, and place orders. Fully reactive stack powered by Spring WebFlux + R2DBC running on Netty.
-
 ## Tech Stack
 
 - Java 21, Spring Boot 4.0.0

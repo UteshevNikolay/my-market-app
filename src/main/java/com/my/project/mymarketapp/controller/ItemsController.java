@@ -13,6 +13,7 @@ import org.springframework.web.bind.annotation.ModelAttribute;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.util.UriComponentsBuilder;
 import reactor.core.publisher.Mono;
 
 @Controller
@@ -58,7 +59,15 @@ public class ItemsController {
     @PostMapping("/items")
     public Mono<String> updateItemCount(@ModelAttribute ActionForm form) {
         return itemsService.updateItemCount(form.getId(), form.getAction())
-                .thenReturn("redirect:/items?search=" + form.getSearch() + "&sort=" + form.getSort() + "&pageSize=" + form.getPageSize() + "&pageNumber=" + form.getPageNumber());
+                .then(Mono.fromCallable(() ->
+                        "redirect:" + UriComponentsBuilder.fromPath("/items")
+                                .queryParam("search", form.getSearch())
+                                .queryParam("sort", form.getSort())
+                                .queryParam("pageSize", form.getPageSize())
+                                .queryParam("pageNumber", form.getPageNumber())
+                                .build()
+                                .toUriString()
+                ));
     }
 
     @GetMapping("/items/{id}")
