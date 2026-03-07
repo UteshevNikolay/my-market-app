@@ -1,13 +1,16 @@
 # My Market App
 
+E-commerce marketplace where users browse products, manage a shopping cart, and place orders. Fully reactive stack powered by Spring WebFlux + R2DBC running on Netty.
+
 ## Tech Stack
 
 - Java 21, Spring Boot 4.0.0
-- Spring Data JPA, PostgreSQL 16
+- Spring WebFlux (reactive, non-blocking), Netty
+- Spring Data R2DBC, PostgreSQL 16
 - Thymeleaf, Bootstrap 5
-- Liquibase (DB migrations)
-- Lombok, MapStruct
-- Testcontainers (integration tests)
+- Liquibase (DB migrations, via JDBC)
+- Lombok, MapStruct 1.6.3
+- Testcontainers, WebTestClient
 
 ## Prerequisites
 
@@ -24,7 +27,7 @@ docker compose up --build -d
 
 This starts:
 - **PostgreSQL** on port `5432`
-- **Application** on port `8080`
+- **Application** on port `8080` (Netty)
 
 Open http://localhost:8080/items
 
@@ -58,26 +61,25 @@ Tests use Testcontainers, so Docker must be running.
 ./gradlew test
 ```
 
-- **Unit tests** (25) — service layer with Mockito
-- **Integration tests** (12) — controllers with Testcontainers PostgreSQL
-- **Context test** (1) — Spring context loads
+- **Unit tests** (25) — service layer with Mockito + StepVerifier
+- **Integration tests** (12) — controllers with WebTestClient + Testcontainers PostgreSQL
 
 ## Project Structure
 
 ```
 src/main/java/com/my/project/mymarketapp/
-├── controller/      # MVC controllers (Items, Cart, Orders)
-├── service/         # Business logic
-├── repository/      # Spring Data JPA repositories
-├── entity/          # JPA entities (Item, CartItem, Order, OrderItem)
+├── controller/      # WebFlux controllers (return Mono<String>)
+├── service/         # Reactive business logic (Mono/Flux chains)
+├── repository/      # Spring Data R2DBC repositories (ReactiveCrudRepository)
+├── entity/          # R2DBC entities (raw FK IDs, no JPA relationships)
 ├── dto/             # Data transfer objects (records)
-└── mapper/          # MapStruct mappers
+└── mapper/          # MapStruct mapper (ItemMapper)
 
 src/main/resources/
 ├── templates/       # Thymeleaf templates (5 pages)
 ├── static/images/   # Product images
 ├── db/changelog/    # Liquibase migrations + seed data
-└── application.yml  # Configuration
+└── application.yml  # Dual config: JDBC (Liquibase) + R2DBC (app)
 ```
 
 ## API Endpoints

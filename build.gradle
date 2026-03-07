@@ -37,7 +37,7 @@ dependencies {
     annotationProcessor 'org.projectlombok:lombok-mapstruct-binding:0.2.0'
     annotationProcessor 'org.mapstruct:mapstruct-processor:1.6.3'
 
-    runtimeOnly 'org.postgresql:postgresql'// JDBC driver for Liquibase
+    runtimeOnly 'org.postgresql:postgresql' //JDBC driver for Liquibase
     runtimeOnly 'org.postgresql:r2dbc-postgresql'
 
     testImplementation 'org.springframework.boot:spring-boot-starter-webflux-test'
