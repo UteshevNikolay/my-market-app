@@ -10,6 +10,7 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 
+import java.util.ArrayList;
 import java.util.List;
 
 @Controller
@@ -29,10 +30,20 @@ public class ItemsController {
             @RequestParam(required = false, defaultValue = "1") int pageNumber,
             Model model
     ) {
-        List<List<ItemDto>> items = itemsService.getItems(search, sort, pageSize, pageNumber);
+        List<ItemDto> flatList = itemsService.getItems(search, sort, pageSize, pageNumber);
         PagingDto paging = itemsService.getPaging(search, pageSize, pageNumber);
 
-        model.addAttribute("items", items);
+        List<List<ItemDto>> rows = new ArrayList<>();
+        int rowSize = 4;
+        for (int i = 0; i < flatList.size(); i += rowSize) {
+            List<ItemDto> row = new ArrayList<>(flatList.subList(i, Math.min(i + rowSize, flatList.size())));
+            while (row.size() < rowSize) {
+                row.add(ItemDto.empty());
+            }
+            rows.add(row);
+        }
+
+        model.addAttribute("items", rows);
         model.addAttribute("search", search);
         model.addAttribute("sort", sort);
         model.addAttribute("paging", paging);

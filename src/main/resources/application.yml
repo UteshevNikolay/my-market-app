@@ -13,7 +13,7 @@ spring:
 
 logging:
   level:
-    com.my.blog.project.myblogonboot: INFO
+    com.my.project.mymarketapp: INFO
     org.springframework.web: INFO
     org.springframework.jdbc.core: DEBUG
   pattern:

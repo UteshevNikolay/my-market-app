@@ -43,8 +43,8 @@ class ItemsServiceTest {
     private ItemsService itemsService;
 
     @Test
-    void getItems_returnsChunkedRows() {
-        // Arrange: 5 items so we expect 2 rows (4 + 1 padded to 4)
+    void getItems_returnsFlatList() {
+        // Arrange: 5 items so we expect a flat list of 5 (no chunking, no padding)
         List<Item> items = List.of(
                 buildItem(1L, "A", 10),
                 buildItem(2L, "B", 20),
@@ -64,21 +64,11 @@ class ItemsServiceTest {
         }
 
         // Act
-        List<List<ItemDto>> rows = itemsService.getItems("", "NO", 8, 1);
+        List<ItemDto> result = itemsService.getItems("", "NO", 8, 1);
 
-        // Assert: two rows
-        assertThat(rows).hasSize(2);
-
-        // First row: 4 real items
-        assertThat(rows.get(0)).hasSize(4);
-        assertThat(rows.get(0)).noneMatch(dto -> dto.id() == -1L);
-
-        // Second row: 1 real item + 3 empty padding items
-        assertThat(rows.get(1)).hasSize(4);
-        assertThat(rows.get(1).get(0).id()).isNotEqualTo(-1L);
-        assertThat(rows.get(1).get(1)).isEqualTo(ItemDto.empty());
-        assertThat(rows.get(1).get(2)).isEqualTo(ItemDto.empty());
-        assertThat(rows.get(1).get(3)).isEqualTo(ItemDto.empty());
+        // Assert: flat list of 5 items, no empty placeholders
+        assertThat(result).hasSize(5);
+        assertThat(result).noneMatch(dto -> dto.id() == -1L);
     }
 
     @Test

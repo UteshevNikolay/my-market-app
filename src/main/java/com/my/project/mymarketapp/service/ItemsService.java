@@ -33,7 +33,7 @@ public class ItemsService {
         this.itemMapper = itemMapper;
     }
 
-    public List<List<ItemDto>> getItems(String search, String sort, int pageSize, int pageNumber) {
+    public List<ItemDto> getItems(String search, String sort, int pageSize, int pageNumber) {
         Pageable pageable = buildPageable(pageSize, pageNumber, sort);
         Page<Item> page = itemRepository.findByTitleContainingIgnoreCase(search, pageable);
 
@@ -45,16 +45,7 @@ public class ItemsService {
             flatList.add(itemMapper.toDto(item, count));
         }
 
-        List<List<ItemDto>> rows = new ArrayList<>();
-        int rowSize = 4;
-        for (int i = 0; i < flatList.size(); i += rowSize) {
-            List<ItemDto> row = new ArrayList<>(flatList.subList(i, Math.min(i + rowSize, flatList.size())));
-            while (row.size() < rowSize) {
-                row.add(ItemDto.empty());
-            }
-            rows.add(row);
-        }
-        return rows;
+        return flatList;
     }
 
     public ItemDto getItemById(Long id) {
