@@ -2,19 +2,19 @@ server:
   port: 8080
 
 spring:
-  datasource:
-    url: ${DB_URL:jdbc:postgresql://localhost:5432/testdb}
+  r2dbc:
+    url: ${R2DB_URL:r2dbc:postgresql://localhost:5432/testdb}
     username: ${DB_USERNAME:user}
     password: ${DB_PASSWORD:password}
-    driver-class-name: org.postgresql.Driver
   liquibase:
     change-log: classpath:db/changelog/db.changelog-master.yml
     enabled: true
+    url: ${DB_URL:jdbc:postgresql://localhost:5432/testdb}
+    user: ${DB_USERNAME:user}
+    password: ${DB_PASSWORD:password}
 
 logging:
   level:
     com.my.project.mymarketapp: INFO
     org.springframework.web: INFO
-    org.springframework.jdbc.core: DEBUG
-  pattern:
-    console: "%d{yyyy-MM-dd HH:mm:ss} - %msg%n"
+    org.springframework.r2dbc: DEBUG

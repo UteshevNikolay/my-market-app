@@ -5,7 +5,6 @@ import com.my.project.mymarketapp.entity.Item;
 import com.my.project.mymarketapp.entity.OrderItem;
 import org.mapstruct.Mapper;
 import org.mapstruct.Mapping;
-import org.mapstruct.Named;
 
 @Mapper(componentModel = "spring")
 public interface ItemMapper {
@@ -18,12 +17,11 @@ public interface ItemMapper {
     @Mapping(source = "count", target = "count")
     ItemDto toDto(Item item, Integer count);
 
-    @Named("orderItemToDto")
     @Mapping(source = "item.id", target = "id")
     @Mapping(source = "item.title", target = "title")
     @Mapping(source = "item.description", target = "description")
-    @Mapping(source = "price", target = "price")
+    @Mapping(source = "orderItem.price", target = "price")
     @Mapping(source = "item.imgPath", target = "imgPath")
-    @Mapping(source = "count", target = "count")
-    ItemDto orderItemToDto(OrderItem orderItem);
+    @Mapping(source = "orderItem.count", target = "count")
+    ItemDto orderItemToDto(Item item, OrderItem orderItem);
 }

@@ -1,28 +1,28 @@
 package com.my.project.mymarketapp.service;
 
 import com.my.project.mymarketapp.dto.ItemDto;
-import com.my.project.mymarketapp.dto.PagingDto;
 import com.my.project.mymarketapp.entity.CartItem;
 import com.my.project.mymarketapp.entity.Item;
 import com.my.project.mymarketapp.mapper.ItemMapper;
 import com.my.project.mymarketapp.repository.CartItemRepository;
 import com.my.project.mymarketapp.repository.ItemRepository;
 import java.util.List;
-import java.util.Optional;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
+import reactor.core.publisher.Flux;
+import reactor.core.publisher.Mono;
+import reactor.test.StepVerifier;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.eq;
-import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -44,7 +44,6 @@ class ItemsServiceTest {
 
     @Test
     void getItems_returnsFlatList() {
-        // Arrange: 5 items so we expect a flat list of 5 (no chunking, no padding)
         List<Item> items = List.of(
                 buildItem(1L, "A", 10),
                 buildItem(2L, "B", 20),
@@ -53,46 +52,42 @@ class ItemsServiceTest {
                 buildItem(5L, "E", 50)
         );
 
-        @SuppressWarnings("unchecked")
-        Page<Item> page = mock(Page.class);
-        when(page.getContent()).thenReturn(items);
-        when(itemRepository.findByTitleContainingIgnoreCase(any(), any(Pageable.class))).thenReturn(page);
-        when(cartItemRepository.findByItemId(any())).thenReturn(Optional.empty());
+        when(itemRepository.findByTitleContainingIgnoreCase(any(), any(Pageable.class)))
+                .thenReturn(Flux.fromIterable(items));
+        when(cartItemRepository.findByItemId(anyLong())).thenReturn(Mono.empty());
 
         for (Item item : items) {
             when(itemMapper.toDto(eq(item), eq(0))).thenReturn(buildItemDto(item.getId()));
         }
 
-        // Act
-        List<ItemDto> result = itemsService.getItems("", "NO", 8, 1);
-
-        // Assert: flat list of 5 items, no empty placeholders
-        assertThat(result).hasSize(5);
-        assertThat(result).noneMatch(dto -> dto.id() == -1L);
+        StepVerifier.create(itemsService.getItems("", "NO", 8, 1).collectList())
+                .assertNext(result -> {
+                    assertThat(result).hasSize(5);
+                    assertThat(result).noneMatch(dto -> dto.id() == -1L);
+                })
+                .verifyComplete();
     }
 
     @Test
     void getItems_withSearch() {
-        @SuppressWarnings("unchecked")
-        Page<Item> page = mock(Page.class);
-        when(page.getContent()).thenReturn(List.of());
-        when(itemRepository.findByTitleContainingIgnoreCase(eq("test"), any(Pageable.class))).thenReturn(page);
+        when(itemRepository.findByTitleContainingIgnoreCase(eq("test"), any(Pageable.class)))
+                .thenReturn(Flux.empty());
 
-        itemsService.getItems("test", "NO", 8, 1);
+        StepVerifier.create(itemsService.getItems("test", "NO", 8, 1))
+                .verifyComplete();
 
         verify(itemRepository).findByTitleContainingIgnoreCase(eq("test"), any(Pageable.class));
     }
 
     @Test
     void getItems_withSortAlpha() {
-        @SuppressWarnings("unchecked")
-        Page<Item> page = mock(Page.class);
-        when(page.getContent()).thenReturn(List.of());
-        when(itemRepository.findByTitleContainingIgnoreCase(any(), any(Pageable.class))).thenReturn(page);
-
         ArgumentCaptor<Pageable> pageableCaptor = ArgumentCaptor.forClass(Pageable.class);
 
-        itemsService.getItems("", "ALPHA", 8, 1);
+        when(itemRepository.findByTitleContainingIgnoreCase(any(), any(Pageable.class)))
+                .thenReturn(Flux.empty());
+
+        StepVerifier.create(itemsService.getItems("", "ALPHA", 8, 1))
+                .verifyComplete();
 
         verify(itemRepository).findByTitleContainingIgnoreCase(any(), pageableCaptor.capture());
         Pageable captured = pageableCaptor.getValue();
@@ -101,14 +96,13 @@ class ItemsServiceTest {
 
     @Test
     void getItems_withSortPrice() {
-        @SuppressWarnings("unchecked")
-        Page<Item> page = mock(Page.class);
-        when(page.getContent()).thenReturn(List.of());
-        when(itemRepository.findByTitleContainingIgnoreCase(any(), any(Pageable.class))).thenReturn(page);
-
         ArgumentCaptor<Pageable> pageableCaptor = ArgumentCaptor.forClass(Pageable.class);
 
-        itemsService.getItems("", "PRICE", 8, 1);
+        when(itemRepository.findByTitleContainingIgnoreCase(any(), any(Pageable.class)))
+                .thenReturn(Flux.empty());
+
+        StepVerifier.create(itemsService.getItems("", "PRICE", 8, 1))
+                .verifyComplete();
 
         verify(itemRepository).findByTitleContainingIgnoreCase(any(), pageableCaptor.capture());
         Pageable captured = pageableCaptor.getValue();
@@ -118,59 +112,75 @@ class ItemsServiceTest {
     @Test
     void getItemById_found() {
         Item item = buildItem(10L, "Widget", 99);
+
         CartItem cartItem = new CartItem();
-        cartItem.setItem(item);
+        cartItem.setItemId(item.getId());
         cartItem.setCount(3);
 
-        when(itemRepository.findById(10L)).thenReturn(Optional.of(item));
-        when(cartItemRepository.findByItemId(10L)).thenReturn(Optional.of(cartItem));
+        when(itemRepository.findById(10L)).thenReturn(Mono.just(item));
+        when(cartItemRepository.findByItemId(10L)).thenReturn(Mono.just(cartItem));
 
         ItemDto expected = new ItemDto(10L, "Widget", "desc-10", 99, "img-10.png", 3);
         when(itemMapper.toDto(item, 3)).thenReturn(expected);
 
-        ItemDto result = itemsService.getItemById(10L);
-
-        verify(itemMapper).toDto(item, 3);
-        assertThat(result).isEqualTo(expected);
+        StepVerifier.create(itemsService.getItemById(10L))
+                .assertNext(result -> {
+                    verify(itemMapper).toDto(item, 3);
+                    assertThat(result).isEqualTo(expected);
+                })
+                .verifyComplete();
     }
 
     @Test
     void getItemById_notFound() {
-        when(itemRepository.findById(99L)).thenReturn(Optional.empty());
+        when(itemRepository.findById(99L)).thenReturn(Mono.empty());
 
-        ItemDto result = itemsService.getItemById(99L);
-
-        assertThat(result).isEqualTo(ItemDto.empty());
-        verify(itemMapper, never()).toDto(any(), any());
+        StepVerifier.create(itemsService.getItemById(99L))
+                .assertNext(result -> {
+                    assertThat(result).isEqualTo(ItemDto.empty());
+                    verify(itemMapper, never()).toDto(any(), any());
+                })
+                .verifyComplete();
     }
 
     @Test
     void updateItemCount_plusNewItem() {
         Item item = buildItem(1L, "NewItem", 50);
 
-        when(cartItemRepository.findByItemId(1L)).thenReturn(Optional.empty());
-        when(itemRepository.findById(1L)).thenReturn(Optional.of(item));
+        when(cartItemRepository.findByItemId(1L)).thenReturn(Mono.empty());
+        when(itemRepository.findById(1L)).thenReturn(Mono.just(item));
 
-        itemsService.updateItemCount(1L, "PLUS");
+        CartItem savedCartItem = new CartItem();
+        savedCartItem.setItemId(1L);
+        savedCartItem.setCount(1);
+        when(cartItemRepository.save(any(CartItem.class))).thenReturn(Mono.just(savedCartItem));
+
+        StepVerifier.create(itemsService.updateItemCount(1L, "PLUS"))
+                .verifyComplete();
 
         ArgumentCaptor<CartItem> cartItemCaptor = ArgumentCaptor.forClass(CartItem.class);
         verify(cartItemRepository).save(cartItemCaptor.capture());
 
         CartItem saved = cartItemCaptor.getValue();
         assertThat(saved.getCount()).isEqualTo(1);
-        assertThat(saved.getItem()).isEqualTo(item);
+        assertThat(saved.getItemId()).isEqualTo(1L);
     }
 
     @Test
     void updateItemCount_plusExisting() {
-        Item item = buildItem(2L, "ExistingItem", 75);
         CartItem existing = new CartItem();
-        existing.setItem(item);
+        existing.setItemId(2L);
         existing.setCount(2);
 
-        when(cartItemRepository.findByItemId(2L)).thenReturn(Optional.of(existing));
+        CartItem updated = new CartItem();
+        updated.setItemId(2L);
+        updated.setCount(3);
 
-        itemsService.updateItemCount(2L, "PLUS");
+        when(cartItemRepository.findByItemId(2L)).thenReturn(Mono.just(existing));
+        when(cartItemRepository.save(any(CartItem.class))).thenReturn(Mono.just(updated));
+
+        StepVerifier.create(itemsService.updateItemCount(2L, "PLUS"))
+                .verifyComplete();
 
         ArgumentCaptor<CartItem> cartItemCaptor = ArgumentCaptor.forClass(CartItem.class);
         verify(cartItemRepository).save(cartItemCaptor.capture());
@@ -179,14 +189,19 @@ class ItemsServiceTest {
 
     @Test
     void updateItemCount_minusDecrement() {
-        Item item = buildItem(3L, "DecrItem", 30);
         CartItem existing = new CartItem();
-        existing.setItem(item);
+        existing.setItemId(3L);
         existing.setCount(3);
 
-        when(cartItemRepository.findByItemId(3L)).thenReturn(Optional.of(existing));
+        CartItem updated = new CartItem();
+        updated.setItemId(3L);
+        updated.setCount(2);
 
-        itemsService.updateItemCount(3L, "MINUS");
+        when(cartItemRepository.findByItemId(3L)).thenReturn(Mono.just(existing));
+        when(cartItemRepository.save(any(CartItem.class))).thenReturn(Mono.just(updated));
+
+        StepVerifier.create(itemsService.updateItemCount(3L, "MINUS"))
+                .verifyComplete();
 
         ArgumentCaptor<CartItem> cartItemCaptor = ArgumentCaptor.forClass(CartItem.class);
         verify(cartItemRepository).save(cartItemCaptor.capture());
@@ -196,14 +211,15 @@ class ItemsServiceTest {
 
     @Test
     void updateItemCount_minusDelete() {
-        Item item = buildItem(4L, "DelItem", 20);
         CartItem existing = new CartItem();
-        existing.setItem(item);
+        existing.setItemId(4L);
         existing.setCount(1);
 
-        when(cartItemRepository.findByItemId(4L)).thenReturn(Optional.of(existing));
+        when(cartItemRepository.findByItemId(4L)).thenReturn(Mono.just(existing));
+        when(cartItemRepository.delete(existing)).thenReturn(Mono.empty());
 
-        itemsService.updateItemCount(4L, "MINUS");
+        StepVerifier.create(itemsService.updateItemCount(4L, "MINUS"))
+                .verifyComplete();
 
         verify(cartItemRepository).delete(existing);
         verify(cartItemRepository, never()).save(any());
@@ -211,19 +227,19 @@ class ItemsServiceTest {
 
     @Test
     void getPaging_returnsPagingDto() {
-        @SuppressWarnings("unchecked")
-        Page<Item> page = mock(Page.class);
-        when(page.hasPrevious()).thenReturn(true);
-        when(page.hasNext()).thenReturn(false);
-        when(itemRepository.findByTitleContainingIgnoreCase(any(), any(Pageable.class))).thenReturn(page);
+        // pageNumber=2, pageSize=8: 2 pages already seen → hasPrevious=true
+        // total=10 items: (2-1+1)*8 = 16 > 10 → hasNext=false
+        when(itemRepository.countByTitleContainingIgnoreCase(any()))
+                .thenReturn(Mono.just(10L));
 
-        PagingDto result = itemsService.getPaging("query", 8, 2);
-
-        // pageNumber must remain 1-based as supplied to the method
-        assertThat(result.pageNumber()).isEqualTo(2);
-        assertThat(result.pageSize()).isEqualTo(8);
-        assertThat(result.hasPrevious()).isTrue();
-        assertThat(result.hasNext()).isFalse();
+        StepVerifier.create(itemsService.getPaging("query", 8, 2))
+                .assertNext(result -> {
+                    assertThat(result.pageNumber()).isEqualTo(2);
+                    assertThat(result.pageSize()).isEqualTo(8);
+                    assertThat(result.hasPrevious()).isTrue();
+                    assertThat(result.hasNext()).isFalse();
+                })
+                .verifyComplete();
     }
 
     private Item buildItem(long id, String title, Integer price) {

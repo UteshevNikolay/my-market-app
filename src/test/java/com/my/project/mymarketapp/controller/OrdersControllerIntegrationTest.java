@@ -1,34 +1,27 @@
 package com.my.project.mymarketapp.controller;
 
 import com.my.project.mymarketapp.TestcontainersConfiguration;
-import com.my.project.mymarketapp.dto.OrderDto;
 import com.my.project.mymarketapp.repository.CartItemRepository;
 import com.my.project.mymarketapp.repository.OrderItemRepository;
 import com.my.project.mymarketapp.repository.OrderRepository;
-import java.util.List;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.webtestclient.autoconfigure.AutoConfigureWebTestClient;
 import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.context.annotation.Import;
-import org.springframework.test.web.servlet.MockMvc;
-import org.springframework.test.web.servlet.MvcResult;
+import org.springframework.test.web.reactive.server.WebTestClient;
+import org.springframework.web.reactive.function.BodyInserters;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.model;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.view;
 
-@SpringBootTest
-@AutoConfigureMockMvc
+@SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
 @Import(TestcontainersConfiguration.class)
+@AutoConfigureWebTestClient
 class OrdersControllerIntegrationTest {
 
     @Autowired
-    private MockMvc mockMvc;
+    private WebTestClient webTestClient;
 
     @Autowired
     private CartItemRepository cartItemRepository;
@@ -42,77 +35,77 @@ class OrdersControllerIntegrationTest {
     @BeforeEach
     void cleanup() {
         // Order items must be deleted before orders due to FK constraint.
-        orderItemRepository.deleteAll();
-        orderRepository.deleteAll();
-        cartItemRepository.deleteAll();
+        orderItemRepository.deleteAll()
+                .then(orderRepository.deleteAll())
+                .then(cartItemRepository.deleteAll())
+                .block();
     }
 
     @Test
-    void getOrders_empty() throws Exception {
-        MvcResult result = mockMvc.perform(get("/orders"))
-                .andExpect(status().isOk())
-                .andExpect(view().name("orders"))
-                .andExpect(model().attributeExists("orders"))
-                .andReturn();
-
-        @SuppressWarnings("unchecked")
-        List<OrderDto> orders = (List<OrderDto>) result.getModelAndView().getModel().get("orders");
-        assertThat(orders).isEmpty();
+    void getOrders_empty() {
+        webTestClient.get().uri("/orders")
+                .exchange()
+                .expectStatus().isOk()
+                .expectBody(String.class)
+                .value(html -> {
+                    assertThat(html).contains("Витрина магазина");
+                    // No order cards present in empty state
+                    assertThat(html).doesNotContain("Заказ №");
+                });
     }
 
     @Test
-    void getOrders_afterPurchase() throws Exception {
+    void getOrders_afterPurchase() {
         addItemAndBuy(1L);
 
-        MvcResult result = mockMvc.perform(get("/orders"))
-                .andExpect(status().isOk())
-                .andExpect(view().name("orders"))
-                .andExpect(model().attributeExists("orders"))
-                .andReturn();
-
-        @SuppressWarnings("unchecked")
-        List<OrderDto> orders = (List<OrderDto>) result.getModelAndView().getModel().get("orders");
-        assertThat(orders).hasSize(1);
+        webTestClient.get().uri("/orders")
+                .exchange()
+                .expectStatus().isOk()
+                .expectBody(String.class)
+                .value(html -> {
+                    assertThat(html).contains("Заказ №");
+                    assertThat(html).contains("Wireless Bluetooth Headphones");
+                });
     }
 
     @Test
-    void getOrder_returnsOrderDetail() throws Exception {
+    void getOrder_returnsOrderDetail() {
         Long orderId = addItemAndBuy(1L);
 
         // GET /orders/{id} without ?newOrder param (defaults to false)
-        MvcResult result = mockMvc.perform(get("/orders/{id}", orderId))
-                .andExpect(status().isOk())
-                .andExpect(view().name("order"))
-                .andExpect(model().attributeExists("order"))
-                .andExpect(model().attributeExists("newOrder"))
-                .andReturn();
-
-        OrderDto order = (OrderDto) result.getModelAndView().getModel().get("order");
-        Boolean newOrder = (Boolean) result.getModelAndView().getModel().get("newOrder");
-
-        assertThat(order.id()).isEqualTo(orderId);
-        assertThat(order.items()).isNotEmpty();
-        assertThat(order.totalSum()).isGreaterThan(0);
-        assertThat(newOrder).isFalse();
+        webTestClient.get().uri("/orders/{id}", orderId)
+                .exchange()
+                .expectStatus().isOk()
+                .expectBody(String.class)
+                .value(html -> {
+                    assertThat(html).contains("Заказ №" + orderId);
+                    // Item title appears in the order detail
+                    assertThat(html).contains("Wireless Bluetooth Headphones");
+                    // Total sum section rendered as "Сумма: XXXX руб."
+                    assertThat(html).contains("Сумма:");
+                    // No success banner (newOrder=false by default)
+                    assertThat(html).doesNotContain("Поздравляем");
+                });
     }
 
-    private Long addItemAndBuy(long itemId) throws Exception {
-        mockMvc.perform(post("/items")
-                        .param("id", String.valueOf(itemId))
-                        .param("action", "PLUS"))
-                .andExpect(status().is3xxRedirection());
+    private Long addItemAndBuy(long itemId) {
+        webTestClient.post().uri("/items")
+                .body(BodyInserters.fromFormData("id", String.valueOf(itemId))
+                        .with("action", "PLUS"))
+                .exchange()
+                .expectStatus().is3xxRedirection();
 
-        MvcResult buyResult = mockMvc.perform(post("/buy"))
-                .andExpect(status().is3xxRedirection())
-                .andReturn();
+        String location = webTestClient.post().uri("/buy")
+                .exchange()
+                .expectStatus().is3xxRedirection()
+                .returnResult(String.class)
+                .getResponseHeaders()
+                .getFirst("Location");
 
-        // Location header is like: /orders/42?newOrder=true
-        String location = buyResult.getResponse().getHeader("Location");
         assertThat(location).isNotNull();
 
-        // Extract the numeric order id from the redirect URL
-        String path = location.contains("?") ? location.substring(0, location.indexOf('?')) :
-                location;
+        // Location header is like: /orders/42?newOrder=true
+        String path = location.contains("?") ? location.substring(0, location.indexOf('?')) : location;
         String idStr = path.substring(path.lastIndexOf('/') + 1);
         return Long.parseLong(idStr);
     }
