@@ -1,0 +1,238 @@
+databaseChangeLog:
+
+  - changeSet:
+      id: 1-create-item-table
+      author: nikolaiu
+      changes:
+        - createTable:
+            tableName: item
+            columns:
+              - column:
+                  name: id
+                  type: BIGSERIAL
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: title
+                  type: VARCHAR(255)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: description
+                  type: TEXT
+                  constraints:
+                    nullable: true
+              - column:
+                  name: price
+                  type: INTEGER
+                  constraints:
+                    nullable: false
+              - column:
+                  name: img_path
+                  type: VARCHAR(255)
+                  constraints:
+                    nullable: true
+
+  - changeSet:
+      id: 2-create-cart-item-table
+      author: nikolaiu
+      changes:
+        - createTable:
+            tableName: cart_item
+            columns:
+              - column:
+                  name: id
+                  type: BIGSERIAL
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: item_id
+                  type: BIGINT
+                  constraints:
+                    nullable: false
+                    foreignKeyName: fk_cart_item_item
+                    references: item(id)
+              - column:
+                  name: count
+                  type: INTEGER
+                  constraints:
+                    nullable: false
+
+  - changeSet:
+      id: 3-create-customer-order-table
+      author: nikolaiu
+      changes:
+        - createTable:
+            tableName: customer_order
+            columns:
+              - column:
+                  name: id
+                  type: BIGSERIAL
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+
+  - changeSet:
+      id: 4-create-order-item-table
+      author: nikolaiu
+      changes:
+        - createTable:
+            tableName: order_item
+            columns:
+              - column:
+                  name: id
+                  type: BIGSERIAL
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: order_id
+                  type: BIGINT
+                  constraints:
+                    nullable: false
+                    foreignKeyName: fk_order_item_order
+                    references: customer_order(id)
+              - column:
+                  name: item_id
+                  type: BIGINT
+                  constraints:
+                    nullable: false
+                    foreignKeyName: fk_order_item_item
+                    references: item(id)
+              - column:
+                  name: count
+                  type: INTEGER
+                  constraints:
+                    nullable: false
+              - column:
+                  name: price
+                  type: INTEGER
+                  constraints:
+                    nullable: false
+
+  - changeSet:
+      id: 5-seed-items
+      author: nikolaiu
+      changes:
+        - insert:
+            tableName: item
+            columns:
+              - column:
+                  name: title
+                  value: "Wireless Bluetooth Headphones"
+              - column:
+                  name: description
+                  value: "Over-ear noise-cancelling headphones with 30-hour battery life and premium sound quality."
+              - column:
+                  name: price
+                  valueNumeric: 4990
+              - column:
+                  name: img_path
+                  value: "images/item1.svg"
+        - insert:
+            tableName: item
+            columns:
+              - column:
+                  name: title
+                  value: "Stainless Steel Kettle 1.7L"
+              - column:
+                  name: description
+                  value: "Electric kettle with rapid boil technology, auto shut-off, and keep-warm function."
+              - column:
+                  name: price
+                  valueNumeric: 1890
+              - column:
+                  name: img_path
+                  value: "images/item2.svg"
+        - insert:
+            tableName: item
+            columns:
+              - column:
+                  name: title
+                  value: "Mechanical Gaming Keyboard"
+              - column:
+                  name: description
+                  value: "Compact TKL mechanical keyboard with RGB backlight and tactile blue switches."
+              - column:
+                  name: price
+                  valueNumeric: 3490
+              - column:
+                  name: img_path
+                  value: "images/item3.svg"
+        - insert:
+            tableName: item
+            columns:
+              - column:
+                  name: title
+                  value: "Non-stick Frying Pan 24cm"
+              - column:
+                  name: description
+                  value: "Granite-coated non-stick pan suitable for all hob types including induction. Oven safe up to 180°C."
+              - column:
+                  name: price
+                  valueNumeric: 1290
+              - column:
+                  name: img_path
+                  value: "images/item4.svg"
+        - insert:
+            tableName: item
+            columns:
+              - column:
+                  name: title
+                  value: "USB-C 65W Laptop Charger"
+              - column:
+                  name: description
+                  value: "Universal USB-C power adapter compatible with most modern laptops and smartphones. Includes 1.5m cable."
+              - column:
+                  name: price
+                  valueNumeric: 1590
+              - column:
+                  name: img_path
+                  value: "images/item5.svg"
+        - insert:
+            tableName: item
+            columns:
+              - column:
+                  name: title
+                  value: "Smart LED Desk Lamp"
+              - column:
+                  name: description
+                  value: "Touch-controlled desk lamp with adjustable colour temperature, USB charging port, and memory function."
+              - column:
+                  name: price
+                  valueNumeric: 2190
+              - column:
+                  name: img_path
+                  value: "images/item6.svg"
+        - insert:
+            tableName: item
+            columns:
+              - column:
+                  name: title
+                  value: "Portable Bluetooth Speaker"
+              - column:
+                  name: description
+                  value: "IPX7 waterproof speaker with 360-degree sound, 12-hour playtime, and built-in microphone."
+              - column:
+                  name: price
+                  valueNumeric: 2790
+              - column:
+                  name: img_path
+                  value: "images/item7.svg"
+        - insert:
+            tableName: item
+            columns:
+              - column:
+                  name: title
+                  value: "Vacuum Storage Bags Set (8 pcs)"
+              - column:
+                  name: description
+                  value: "Space-saving vacuum compression bags for clothes, bedding, and seasonal items. No pump required."
+              - column:
+                  name: price
+                  valueNumeric: 890
+              - column:
+                  name: img_path
+                  value: "images/item8.svg"
