@@ -1,13 +1,16 @@
 package com.my.project.mymarketapp.repository;
 
 import com.my.project.mymarketapp.entity.Item;
-import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
-import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.repository.reactive.ReactiveCrudRepository;
 import org.springframework.stereotype.Repository;
+import reactor.core.publisher.Flux;
+import reactor.core.publisher.Mono;
 
 @Repository
-public interface ItemRepository extends JpaRepository<Item, Long> {
+public interface ItemRepository extends ReactiveCrudRepository<Item, Long> {
 
-    Page<Item> findByTitleContainingIgnoreCase(String title, Pageable pageable);
+    Flux<Item> findByTitleContainingIgnoreCase(String title, Pageable pageable);
+
+    Mono<Long> countByTitleContainingIgnoreCase(String title);
 }

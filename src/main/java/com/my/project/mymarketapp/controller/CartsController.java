@@ -1,14 +1,15 @@
 package com.my.project.mymarketapp.controller;
 
+import com.my.project.mymarketapp.dto.ActionForm;
 import com.my.project.mymarketapp.dto.ItemDto;
 import com.my.project.mymarketapp.service.CartsService;
+import java.util.List;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.ModelAttribute;
 import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestParam;
-
-import java.util.List;
+import reactor.core.publisher.Mono;
 
 @Controller
 public class CartsController {
@@ -20,28 +21,27 @@ public class CartsController {
     }
 
     @GetMapping("/cart/items")
-    public String getCartItems(Model model) {
-        List<ItemDto> items = cartsService.getCartItems();
-        int total = cartsService.getTotal();
+    public Mono<String> getCartItems(Model model) {
+        Mono<List<ItemDto>> itemsMono = cartsService.getCartItems().collectList();
+        Mono<Integer> totalMono = cartsService.getTotal();
 
-        model.addAttribute("items", items);
-        model.addAttribute("total", total);
-
-        return "cart";
+        return Mono.zip(itemsMono, totalMono)
+                .doOnNext(tuple -> {
+                    model.addAttribute("items", tuple.getT1());
+                    model.addAttribute("total", tuple.getT2());
+                })
+                .thenReturn("cart");
     }
 
     @PostMapping("/cart/items")
-    public String updateCartItem(
-            @RequestParam Long id,
-            @RequestParam String action
-    ) {
-        cartsService.updateCartItem(id, action);
-        return "redirect:/cart/items";
+    public Mono<String> updateCartItem(@ModelAttribute ActionForm form) {
+        return cartsService.updateCartItem(form.getId(), form.getAction())
+                .thenReturn("redirect:/cart/items");
     }
 
     @PostMapping("/buy")
-    public String buy() {
-        Long orderId = cartsService.createOrder();
-        return "redirect:/orders/" + orderId + "?newOrder=true";
+    public Mono<String> buy() {
+        return cartsService.createOrder()
+                .map(orderId -> "redirect:/orders/" + orderId + "?newOrder=true");
     }
 }

@@ -3,20 +3,16 @@ package com.my.project.mymarketapp.service;
 import com.my.project.mymarketapp.dto.ItemDto;
 import com.my.project.mymarketapp.dto.PagingDto;
 import com.my.project.mymarketapp.entity.CartItem;
-import com.my.project.mymarketapp.entity.Item;
 import com.my.project.mymarketapp.mapper.ItemMapper;
 import com.my.project.mymarketapp.repository.CartItemRepository;
 import com.my.project.mymarketapp.repository.ItemRepository;
-import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Optional;
+import reactor.core.publisher.Flux;
+import reactor.core.publisher.Mono;
 
 @Service
 public class ItemsService {
@@ -33,74 +29,69 @@ public class ItemsService {
         this.itemMapper = itemMapper;
     }
 
-    public List<List<ItemDto>> getItems(String search, String sort, int pageSize, int pageNumber) {
+    public Flux<ItemDto> getItems(String search, String sort, int pageSize, int pageNumber) {
         Pageable pageable = buildPageable(pageSize, pageNumber, sort);
-        Page<Item> page = itemRepository.findByTitleContainingIgnoreCase(search, pageable);
-
-        List<ItemDto> flatList = new ArrayList<>();
-        for (Item item : page.getContent()) {
-            int count = cartItemRepository.findByItemId(item.getId())
-                    .map(CartItem::getCount)
-                    .orElse(0);
-            flatList.add(itemMapper.toDto(item, count));
-        }
-
-        List<List<ItemDto>> rows = new ArrayList<>();
-        int rowSize = 4;
-        for (int i = 0; i < flatList.size(); i += rowSize) {
-            List<ItemDto> row = new ArrayList<>(flatList.subList(i, Math.min(i + rowSize, flatList.size())));
-            while (row.size() < rowSize) {
-                row.add(ItemDto.empty());
-            }
-            rows.add(row);
-        }
-        return rows;
+        return itemRepository.findByTitleContainingIgnoreCase(search, pageable)
+                .concatMap(item -> cartItemRepository.findByItemId(item.getId())
+                        .map(CartItem::getCount)
+                        .defaultIfEmpty(0)
+                        .map(count -> itemMapper.toDto(item, count))
+                );
     }
 
-    public ItemDto getItemById(Long id) {
-        Item item = itemRepository.findById(id).orElse(null);
-        if (item == null) {
-            return ItemDto.empty();
-        }
-        int count = cartItemRepository.findByItemId(item.getId())
-                .map(CartItem::getCount)
-                .orElse(0);
-        return itemMapper.toDto(item, count);
+    public Mono<ItemDto> getItemById(Long id) {
+        return itemRepository.findById(id)
+                .flatMap(item -> cartItemRepository.findByItemId(item.getId())
+                        .map(CartItem::getCount)
+                        .defaultIfEmpty(0)
+                        .map(count -> itemMapper.toDto(item, count))
+                )
+                .defaultIfEmpty(ItemDto.empty());
     }
 
     @Transactional
-    public void updateItemCount(Long id, String action) {
-        Optional<CartItem> existing = cartItemRepository.findByItemId(id);
+    public Mono<Void> updateItemCount(Long id, String action) {
         if ("PLUS".equals(action)) {
-            if (existing.isPresent()) {
-                CartItem cartItem = existing.get();
-                cartItem.setCount(cartItem.getCount() + 1);
-                cartItemRepository.save(cartItem);
-            } else {
-                Item item = itemRepository.findById(id).orElseThrow(
-                        () -> new IllegalArgumentException("Item not found: " + id));
-                CartItem cartItem = new CartItem();
-                cartItem.setItem(item);
-                cartItem.setCount(1);
-                cartItemRepository.save(cartItem);
-            }
+            return cartItemRepository.findByItemId(id)
+                    .flatMap(cartItem -> {
+                        cartItem.setCount(cartItem.getCount() + 1);
+                        return cartItemRepository.save(cartItem);
+                    })
+                    .switchIfEmpty(Mono.defer(() ->
+                            itemRepository.findById(id)
+                                    .switchIfEmpty(Mono.error(new IllegalArgumentException("Item " +
+                                            "not found: " + id)))
+                                    .flatMap(item -> {
+                                        CartItem cartItem = new CartItem();
+                                        cartItem.setItemId(item.getId());
+                                        cartItem.setCount(1);
+                                        return cartItemRepository.save(cartItem);
+                                    })
+                    ))
+                    .then();
         } else if ("MINUS".equals(action)) {
-            if (existing.isPresent()) {
-                CartItem cartItem = existing.get();
-                if (cartItem.getCount() > 1) {
-                    cartItem.setCount(cartItem.getCount() - 1);
-                    cartItemRepository.save(cartItem);
-                } else {
-                    cartItemRepository.delete(cartItem);
-                }
-            }
+            return cartItemRepository.findByItemId(id)
+                    .flatMap(cartItem -> {
+                        if (cartItem.getCount() > 1) {
+                            cartItem.setCount(cartItem.getCount() - 1);
+                            return cartItemRepository.save(cartItem).then();
+                        } else {
+                            return cartItemRepository.delete(cartItem);
+                        }
+                    })
+                    .then();
         }
+        return Mono.empty();
     }
 
-    public PagingDto getPaging(String search, int pageSize, int pageNumber) {
-        Pageable pageable = buildPageable(pageSize, pageNumber, "NO");
-        Page<Item> page = itemRepository.findByTitleContainingIgnoreCase(search, pageable);
-        return new PagingDto(pageNumber, pageSize, page.hasPrevious(), page.hasNext());
+    public Mono<PagingDto> getPaging(String search, int pageSize, int pageNumber) {
+        return itemRepository.countByTitleContainingIgnoreCase(search)
+                .map(total -> {
+                    int zeroBasedPage = pageNumber - 1;
+                    boolean hasPrevious = zeroBasedPage > 0;
+                    boolean hasNext = (long) (zeroBasedPage + 1) * pageSize < total;
+                    return new PagingDto(pageNumber, pageSize, hasPrevious, hasNext);
+                });
     }
 
     private Pageable buildPageable(int pageSize, int pageNumber, String sort) {
