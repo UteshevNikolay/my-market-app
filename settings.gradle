@@ -1,1 +1,3 @@
 rootProject.name = 'my-market-app'
+include 'market-app'
+include 'payment-service'

@@ -17,8 +17,33 @@ services:
       timeout: 5s
       retries: 5
 
-  app:
-    build: .
+  redis:
+    image: redis:7-alpine
+    container_name: redis-my-market
+    restart: always
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  payment-service:
+    build:
+      context: .
+      dockerfile: payment-service/Dockerfile
+    container_name: payment-service
+    restart: always
+    ports:
+      - "8081:8081"
+    environment:
+      PAYMENT_INITIAL_BALANCE: 100000
+
+  market-app:
+    build:
+      context: .
+      dockerfile: market-app/Dockerfile
     container_name: my-market-app
     restart: always
     ports:
@@ -28,6 +53,11 @@ services:
       R2DB_URL: r2dbc:postgresql://postgres:5432/testdb
       DB_USERNAME: user
       DB_PASSWORD: password
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      PAYMENT_SERVICE_URL: http://payment-service:8081
     depends_on:
       postgres:
+        condition: service_healthy
+      redis:
         condition: service_healthy

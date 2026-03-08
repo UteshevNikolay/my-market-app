@@ -1,0 +1,122 @@
+plugins {
+    id 'org.springframework.boot'
+    id 'io.spring.dependency-management'
+    id 'org.openapi.generator'
+}
+
+openApiGenerate {
+    generatorName = "java"
+    inputSpec = "${rootProject.projectDir}/openapi/payment-api.yml"
+    outputDir = "${layout.buildDirectory.get().asFile}/generated/openapi"
+    apiPackage = "com.my.project.payment.client.api"
+    modelPackage = "com.my.project.payment.client.model"
+    invokerPackage = "com.my.project.payment.client"
+    configOptions = [
+        library: "webclient",
+        useSpringBoot3: "true",
+        reactive: "true",
+        dateLibrary: "java8",
+        openApiNullable: "false",
+        useJakartaEe: "true",
+        serializationLibrary: "jackson"
+    ]
+}
+
+// Patch the generated ApiClient.java for Spring Boot 4 / Spring 6.2 compatibility.
+// Three methods were removed from HttpHeaders and UriComponentsBuilder in Spring 6.2.
+tasks.register('fixGeneratedCode') {
+    dependsOn tasks.named('openApiGenerate')
+    def apiClientFile = file("${layout.buildDirectory.get().asFile}/generated/openapi/src/main/java/com/my/project/payment/client/ApiClient.java")
+    inputs.file apiClientFile
+    outputs.file apiClientFile
+    doLast {
+        def content = apiClientFile.text
+        // Fix 1: HttpHeaders.containsKey(String) removed → containsHeader(String)
+        content = content.replace(
+            'if (defaultHeaders.containsKey(name)) {',
+            'if (defaultHeaders.containsHeader(name)) {'
+        )
+        // Fix 2: UriComponentsBuilder.fromHttpUrl(String) removed → fromUriString(String)
+        content = content.replace(
+            'UriComponentsBuilder.fromHttpUrl(basePath).path(path)',
+            'UriComponentsBuilder.fromUriString(basePath).path(path)'
+        )
+        // Fix 3: HttpHeaders.entrySet() removed → iterate via headerNames()
+        content = content.replace(
+            '''for (Entry<String, List<String>> entry : headers.entrySet()) {
+            List<String> values = entry.getValue();
+            for(String value : values) {
+                if (value != null) {
+                    requestBuilder.header(entry.getKey(), value);
+                }
+            }
+        }''',
+            '''for (String headerName : headers.headerNames()) {
+            List<String> values = headers.get(headerName);
+            if (values != null) {
+                for (String value : values) {
+                    if (value != null) {
+                        requestBuilder.header(headerName, value);
+                    }
+                }
+            }
+        }'''
+        )
+        apiClientFile.text = content
+    }
+}
+
+sourceSets {
+    main {
+        java {
+            srcDir "${layout.buildDirectory.get().asFile}/generated/openapi/src/main/java"
+        }
+    }
+}
+
+tasks.named('compileJava').configure {
+    dependsOn tasks.named('fixGeneratedCode')
+}
+
+dependencies {
+    implementation 'org.springframework.boot:spring-boot-starter-webflux'
+    implementation 'org.springframework.boot:spring-boot-starter-thymeleaf'
+    implementation 'org.springframework.boot:spring-boot-starter-data-r2dbc'
+    implementation 'org.springframework.boot:spring-boot-starter-data-redis-reactive'
+    implementation 'org.springframework.boot:spring-boot-starter-liquibase'
+
+    compileOnly 'org.projectlombok:lombok'
+    implementation 'org.mapstruct:mapstruct:1.6.3'
+
+    annotationProcessor 'org.projectlombok:lombok'
+    annotationProcessor 'org.projectlombok:lombok-mapstruct-binding:0.2.0'
+    annotationProcessor 'org.mapstruct:mapstruct-processor:1.6.3'
+
+    runtimeOnly 'org.postgresql:postgresql'
+    runtimeOnly 'org.postgresql:r2dbc-postgresql'
+
+    testImplementation 'org.springframework.boot:spring-boot-starter-webflux-test'
+    testImplementation 'org.springframework.boot:spring-boot-starter-thymeleaf-test'
+    testImplementation 'org.springframework.boot:spring-boot-testcontainers'
+    testImplementation 'org.testcontainers:testcontainers-junit-jupiter'
+    testImplementation 'org.testcontainers:testcontainers-postgresql'
+    testImplementation 'org.testcontainers:testcontainers-r2dbc'
+
+    testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
+
+    // OpenAPI generated client dependencies
+    implementation 'io.swagger.core.v3:swagger-annotations:2.2.28'
+    implementation 'com.google.code.findbugs:jsr305:3.0.2'
+    implementation 'com.fasterxml.jackson.core:jackson-databind'
+    implementation 'com.fasterxml.jackson.datatype:jackson-datatype-jsr310'
+    implementation 'org.openapitools:jackson-databind-nullable:0.2.6'
+}
+
+tasks.named('bootJar') {
+    archiveFileName = "${project.name}-${project.version}.jar"
+    mainClass = 'com.my.project.mymarketapp.MyMarketAppApplication'
+}
+
+tasks.named('jar') {
+    enabled = false
+}

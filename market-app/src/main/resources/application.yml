@@ -1,0 +1,32 @@
+server:
+  port: 8080
+
+spring:
+  r2dbc:
+    url: ${R2DB_URL:r2dbc:postgresql://localhost:5432/testdb}
+    username: ${DB_USERNAME:user}
+    password: ${DB_PASSWORD:password}
+  liquibase:
+    change-log: classpath:db/changelog/db.changelog-master.yml
+    enabled: true
+    url: ${DB_URL:jdbc:postgresql://localhost:5432/testdb}
+    user: ${DB_USERNAME:user}
+    password: ${DB_PASSWORD:password}
+  data:
+    redis:
+      host: ${REDIS_HOST:localhost}
+      port: ${REDIS_PORT:6379}
+
+logging:
+  level:
+    com.my.project.mymarketapp: INFO
+    org.springframework.web: INFO
+    org.springframework.r2dbc: DEBUG
+
+cache:
+  item:
+    ttl-minutes: ${CACHE_TTL_MINUTES:2}
+
+payment:
+  service:
+    url: ${PAYMENT_SERVICE_URL:http://localhost:8081}
