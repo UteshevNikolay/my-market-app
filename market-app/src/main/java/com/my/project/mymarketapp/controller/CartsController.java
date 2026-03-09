@@ -28,7 +28,7 @@ public class CartsController {
 
     @GetMapping("/cart/items")
     public Mono<String> getCartItems(Model model,
-            @RequestParam(required = false) String error) {
+                                     @RequestParam(required = false) String error) {
         Mono<List<ItemDto>> itemsMono = cartsService.getCartItems().collectList();
         Mono<Integer> totalMono = cartsService.getTotal();
         Mono<Integer> balanceMono = paymentClientService.getBalance();
@@ -67,7 +67,8 @@ public class CartsController {
                                 .map(orderId -> "redirect:/orders/" + orderId + "?newOrder=true");
                     } else {
                         String msg = URLEncoder.encode(
-                                response.getMessage() != null ? response.getMessage() : "Оплата не прошла",
+                                response.getMessage() != null ? response.getMessage() : "Оплата " +
+                                        "не прошла",
                                 StandardCharsets.UTF_8);
                         return Mono.just("redirect:/cart/items?error=" + msg);
                     }

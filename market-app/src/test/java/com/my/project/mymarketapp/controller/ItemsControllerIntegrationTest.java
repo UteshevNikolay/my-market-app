@@ -1,6 +1,6 @@
 package com.my.project.mymarketapp.controller;
 
-import com.my.project.mymarketapp.TestcontainersConfiguration;
+import com.my.project.mymarketapp.config.TestcontainersConfiguration;
 import com.my.project.mymarketapp.entity.Item;
 import com.my.project.mymarketapp.repository.CartItemRepository;
 import com.my.project.mymarketapp.service.ItemCacheService;
@@ -15,8 +15,6 @@ import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.reactive.server.WebTestClient;
 import org.springframework.web.reactive.function.BodyInserters;
 import reactor.core.publisher.Mono;
-
-import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;

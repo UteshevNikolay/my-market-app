@@ -3,6 +3,7 @@ WORKDIR /app
 COPY build.gradle settings.gradle ./
 COPY market-app/build.gradle market-app/
 COPY payment-service/build.gradle payment-service/
+COPY openapi/ openapi/
 RUN gradle :payment-service:dependencies --no-daemon || true
 COPY payment-service/src/ payment-service/src/
 RUN gradle :payment-service:bootJar --no-daemon

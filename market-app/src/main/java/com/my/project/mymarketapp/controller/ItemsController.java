@@ -33,7 +33,8 @@ public class ItemsController {
             @RequestParam(required = false, defaultValue = "1") int pageNumber,
             Model model
     ) {
-        Mono<List<ItemDto>> itemsMono = itemsService.getItems(search, sort, pageSize, pageNumber).collectList();
+        Mono<List<ItemDto>> itemsMono =
+                itemsService.getItems(search, sort, pageSize, pageNumber).collectList();
         Mono<PagingDto> pagingMono = itemsService.getPaging(search, pageSize, pageNumber);
 
         return Mono.zip(itemsMono, pagingMono)
@@ -42,7 +43,8 @@ public class ItemsController {
                     List<List<ItemDto>> rows = new ArrayList<>();
                     int rowSize = 4;
                     for (int i = 0; i < flatList.size(); i += rowSize) {
-                        List<ItemDto> row = new ArrayList<>(flatList.subList(i, Math.min(i + rowSize, flatList.size())));
+                        List<ItemDto> row = new ArrayList<>(flatList.subList(i,
+                                Math.min(i + rowSize, flatList.size())));
                         while (row.size() < rowSize) {
                             row.add(ItemDto.empty());
                         }
@@ -78,7 +80,8 @@ public class ItemsController {
     }
 
     @PostMapping("/items/{id}")
-    public Mono<String> updateItemCountById(@PathVariable Long id, @ModelAttribute ActionForm form) {
+    public Mono<String> updateItemCountById(@PathVariable Long id,
+                                            @ModelAttribute ActionForm form) {
         return itemsService.updateItemCount(id, form.getAction())
                 .thenReturn("redirect:/items/" + id);
     }

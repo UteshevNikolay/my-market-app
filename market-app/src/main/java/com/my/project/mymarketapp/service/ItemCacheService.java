@@ -1,29 +1,28 @@
 package com.my.project.mymarketapp.service;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.core.type.TypeReference;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.my.project.mymarketapp.entity.Item;
+import java.time.Duration;
+import java.util.List;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.redis.core.ReactiveRedisTemplate;
 import org.springframework.stereotype.Service;
 import reactor.core.publisher.Mono;
-
-import java.time.Duration;
-import java.util.List;
+import tools.jackson.core.JacksonException;
+import tools.jackson.core.type.TypeReference;
+import tools.jackson.databind.json.JsonMapper;
 
 @Service
 public class ItemCacheService {
 
     private final ReactiveRedisTemplate<String, String> redisTemplate;
-    private final ObjectMapper objectMapper;
+    private final JsonMapper jsonMapper;
     private final Duration ttl;
 
     public ItemCacheService(ReactiveRedisTemplate<String, String> redisTemplate,
-                            ObjectMapper objectMapper,
+                            JsonMapper jsonMapper,
                             @Value("${cache.item.ttl-minutes:2}") int ttlMinutes) {
         this.redisTemplate = redisTemplate;
-        this.objectMapper = objectMapper;
+        this.jsonMapper = jsonMapper;
         this.ttl = Duration.ofMinutes(ttlMinutes);
     }
 
@@ -32,8 +31,8 @@ public class ItemCacheService {
         return redisTemplate.opsForValue().get(key)
                 .flatMap(json -> {
                     try {
-                        return Mono.just(objectMapper.readValue(json, Item.class));
-                    } catch (JsonProcessingException e) {
+                        return Mono.just(jsonMapper.readValue(json, Item.class));
+                    } catch (JacksonException e) {
                         return Mono.empty();
                     }
                 });
@@ -42,34 +41,38 @@ public class ItemCacheService {
     public Mono<Item> cacheItem(Long id, Item item) {
         String key = "item:" + id;
         try {
-            String json = objectMapper.writeValueAsString(item);
+            String json = jsonMapper.writeValueAsString(item);
             return redisTemplate.opsForValue().set(key, json, ttl)
                     .thenReturn(item);
-        } catch (JsonProcessingException e) {
+        } catch (JacksonException e) {
             return Mono.just(item);
         }
     }
 
-    public Mono<List<Item>> getCachedItems(String search, String sort, int pageSize, int pageNumber) {
+    public Mono<List<Item>> getCachedItems(String search, String sort, int pageSize,
+                                           int pageNumber) {
         String key = buildItemsKey(search, sort, pageSize, pageNumber);
         return redisTemplate.opsForValue().get(key)
                 .flatMap(json -> {
                     try {
-                        List<Item> items = objectMapper.readValue(json, new TypeReference<List<Item>>() {});
+                        List<Item> items = jsonMapper.readValue(json,
+                                new TypeReference<List<Item>>() {
+                                });
                         return Mono.just(items);
-                    } catch (JsonProcessingException e) {
+                    } catch (JacksonException e) {
                         return Mono.empty();
                     }
                 });
     }
 
-    public Mono<List<Item>> cacheItems(String search, String sort, int pageSize, int pageNumber, List<Item> items) {
+    public Mono<List<Item>> cacheItems(String search, String sort, int pageSize, int pageNumber,
+                                       List<Item> items) {
         String key = buildItemsKey(search, sort, pageSize, pageNumber);
         try {
-            String json = objectMapper.writeValueAsString(items);
+            String json = jsonMapper.writeValueAsString(items);
             return redisTemplate.opsForValue().set(key, json, ttl)
                     .thenReturn(items);
-        } catch (JsonProcessingException e) {
+        } catch (JacksonException e) {
             return Mono.just(items);
         }
     }

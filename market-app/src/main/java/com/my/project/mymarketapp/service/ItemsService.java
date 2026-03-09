@@ -40,7 +40,8 @@ public class ItemsService {
                 .switchIfEmpty(
                         itemRepository.findByTitleContainingIgnoreCase(search, pageable)
                                 .collectList()
-                                .flatMap(items -> itemCacheService.cacheItems(search, sort, pageSize, pageNumber, items))
+                                .flatMap(items -> itemCacheService.cacheItems(search, sort,
+                                        pageSize, pageNumber, items))
                                 .flatMapMany(Flux::fromIterable)
                 )
                 .concatMap(item -> cartItemRepository.findByItemId(item.getId())

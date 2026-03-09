@@ -22,6 +22,8 @@ logging:
     com.my.project.mymarketapp: INFO
     org.springframework.web: INFO
     org.springframework.r2dbc: DEBUG
+    org.springframework.data.redis: DEBUG
+    io.lettuce.core: DEBUG
 
 cache:
   item:

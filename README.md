@@ -83,13 +83,13 @@ Open http://localhost:8080/items
 Tests use Testcontainers, so Docker must be running.
 
 ```bash
-./gradlew test                     # All modules (47 tests)
-./gradlew :market-app:test         # market-app only (37 tests)
-./gradlew :payment-service:test    # payment-service only (10 tests)
+./gradlew test                     # All modules (55 tests)
+./gradlew :market-app:test         # market-app only (44 tests)
+./gradlew :payment-service:test    # payment-service only (11 tests)
 ```
 
-- **market-app**: 25 unit (Mockito + StepVerifier) + 12 integration (WebTestClient + Testcontainers)
-- **payment-service**: 5 unit + 4 integration + 1 context load
+- **market-app**: 25 unit (Mockito + StepVerifier) + 19 integration (WebTestClient + Testcontainers)
+- **payment-service**: 5 unit + 5 integration + 1 context load
 
 ## Project Structure
 
@@ -99,7 +99,7 @@ my-market-app/
 │   └── payment-api.yml                  # Shared OpenAPI 3.0.3 spec
 ├── market-app/                          # Main application
 │   └── src/main/java/.../mymarketapp/
-│       ├── config/                      # Redis, PaymentClient configs
+│       ├── config/                      # PaymentClient config
 │       ├── controller/                  # WebFlux controllers (Mono<String>)
 │       ├── service/                     # Reactive business logic
 │       ├── repository/                  # R2DBC repositories

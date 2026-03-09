@@ -4,10 +4,9 @@ import com.my.project.paymentservice.config.PaymentProperties;
 import com.my.project.paymentservice.dto.BalanceResponse;
 import com.my.project.paymentservice.dto.PaymentRequest;
 import com.my.project.paymentservice.dto.PaymentResponse;
+import java.util.concurrent.atomic.AtomicInteger;
 import org.springframework.stereotype.Service;
 import reactor.core.publisher.Mono;
-
-import java.util.concurrent.atomic.AtomicInteger;
 
 @Service
 public class PaymentService {

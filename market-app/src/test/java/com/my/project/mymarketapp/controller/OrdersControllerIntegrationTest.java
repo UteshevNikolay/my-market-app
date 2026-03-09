@@ -1,6 +1,6 @@
 package com.my.project.mymarketapp.controller;
 
-import com.my.project.mymarketapp.TestcontainersConfiguration;
+import com.my.project.mymarketapp.config.TestcontainersConfiguration;
 import com.my.project.mymarketapp.entity.Item;
 import com.my.project.mymarketapp.repository.CartItemRepository;
 import com.my.project.mymarketapp.repository.OrderItemRepository;
@@ -11,8 +11,8 @@ import com.my.project.payment.client.model.PaymentResponse;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.webtestclient.autoconfigure.AutoConfigureWebTestClient;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.boot.webtestclient.autoconfigure.AutoConfigureWebTestClient;
 import org.springframework.context.annotation.Import;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.reactive.server.WebTestClient;
@@ -143,7 +143,8 @@ class OrdersControllerIntegrationTest {
         assertThat(location).isNotNull();
 
         // Location header is like: /orders/42?newOrder=true
-        String path = location.contains("?") ? location.substring(0, location.indexOf('?')) : location;
+        String path = location.contains("?") ? location.substring(0, location.indexOf('?')) :
+                location;
         String idStr = path.substring(path.lastIndexOf('/') + 1);
         return Long.parseLong(idStr);
     }
