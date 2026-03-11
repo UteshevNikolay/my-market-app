@@ -1,0 +1,65 @@
+plugins {
+    id 'org.springframework.boot'
+    id 'io.spring.dependency-management'
+    id 'org.openapi.generator'
+}
+
+openApiGenerate {
+    generatorName = "spring"
+    inputSpec = "${rootProject.projectDir}/openapi/payment-api.yml"
+    outputDir = "${layout.buildDirectory.get().asFile}/generated/openapi"
+    apiPackage = "com.my.project.paymentservice.generated.api"
+    modelPackage = "com.my.project.paymentservice.dto"
+    configOptions = [
+        interfaceOnly        : "true",
+        useSpringBoot3       : "true",
+        useJakartaEe         : "true",
+        reactive             : "true",
+        skipDefaultInterface : "true",
+        openApiNullable      : "false",
+        useBeanValidation    : "false",
+        performBeanValidation: "false",
+        useResponseEntity    : "false",
+        serializationLibrary : "jackson",
+        useTags              : "true"
+    ]
+    generateModelTests = false
+    generateModelDocumentation = false
+    generateApiTests = false
+    generateApiDocumentation = false
+}
+
+sourceSets {
+    main {
+        java {
+            srcDir "${layout.buildDirectory.get().asFile}/generated/openapi/src/main/java"
+        }
+    }
+}
+
+tasks.named('compileJava').configure {
+    dependsOn tasks.named('openApiGenerate')
+}
+
+dependencies {
+    implementation 'org.springframework.boot:spring-boot-starter-webflux'
+    implementation 'io.swagger.core.v3:swagger-annotations:2.2.28'
+    implementation 'jakarta.validation:jakarta.validation-api'
+
+    compileOnly 'org.projectlombok:lombok'
+    annotationProcessor 'org.projectlombok:lombok'
+
+    testImplementation 'org.springframework.boot:spring-boot-starter-test'
+    testImplementation 'org.springframework.boot:spring-boot-starter-webflux-test'
+    testImplementation 'io.projectreactor:reactor-test'
+    testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
+}
+
+tasks.named('bootJar') {
+    archiveFileName = "${project.name}-${project.version}.jar"
+    mainClass = 'com.my.project.paymentservice.PaymentServiceApplication'
+}
+
+tasks.named('jar') {
+    enabled = false
+}

@@ -1,0 +1,10 @@
+server:
+  port: 8081
+
+payment:
+  initial-balance: ${PAYMENT_INITIAL_BALANCE:100000}
+
+logging:
+  level:
+    com.my.project.paymentservice: INFO
+    org.springframework.web: INFO
