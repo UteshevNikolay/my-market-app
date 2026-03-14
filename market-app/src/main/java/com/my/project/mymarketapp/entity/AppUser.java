@@ -4,18 +4,18 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 import org.springframework.data.annotation.Id;
-import org.springframework.data.relational.core.mapping.Column;
 import org.springframework.data.relational.core.mapping.Table;
 
-@Table("customer_order")
+@Table("app_user")
 @Getter
 @Setter
 @NoArgsConstructor
-public class Order {
+public class AppUser {
 
     @Id
     private Long id;
 
-    @Column("user_id")
-    private Long userId;
+    private String username;
+
+    private String password;
 }

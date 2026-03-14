@@ -2,11 +2,13 @@ package com.my.project.mymarketapp.controller;
 
 import com.my.project.mymarketapp.dto.ActionForm;
 import com.my.project.mymarketapp.dto.ItemDto;
+import com.my.project.mymarketapp.security.AppUserDetails;
 import com.my.project.mymarketapp.service.CartsService;
 import com.my.project.mymarketapp.service.PaymentClientService;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
 import java.util.List;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -27,10 +29,12 @@ public class CartsController {
     }
 
     @GetMapping("/cart/items")
-    public Mono<String> getCartItems(Model model,
+    public Mono<String> getCartItems(@AuthenticationPrincipal AppUserDetails user,
+                                     Model model,
                                      @RequestParam(required = false) String error) {
-        Mono<List<ItemDto>> itemsMono = cartsService.getCartItems().collectList();
-        Mono<Integer> totalMono = cartsService.getTotal();
+        Long userId = user.getUserId();
+        Mono<List<ItemDto>> itemsMono = cartsService.getCartItems(userId).collectList();
+        Mono<Integer> totalMono = cartsService.getTotal(userId);
         Mono<Integer> balanceMono = paymentClientService.getBalance();
 
         return Mono.zip(itemsMono, totalMono, balanceMono)
@@ -52,18 +56,20 @@ public class CartsController {
     }
 
     @PostMapping("/cart/items")
-    public Mono<String> updateCartItem(@ModelAttribute ActionForm form) {
-        return cartsService.updateCartItem(form.getId(), form.getAction())
+    public Mono<String> updateCartItem(@ModelAttribute ActionForm form,
+                                       @AuthenticationPrincipal AppUserDetails user) {
+        return cartsService.updateCartItem(form.getId(), form.getAction(), user.getUserId())
                 .thenReturn("redirect:/cart/items");
     }
 
     @PostMapping("/buy")
-    public Mono<String> buy() {
-        return cartsService.getTotal()
+    public Mono<String> buy(@AuthenticationPrincipal AppUserDetails user) {
+        Long userId = user.getUserId();
+        return cartsService.getTotal(userId)
                 .flatMap(total -> paymentClientService.processPayment(total))
                 .flatMap(response -> {
                     if (Boolean.TRUE.equals(response.getSuccess())) {
-                        return cartsService.createOrder()
+                        return cartsService.createOrder(userId)
                                 .map(orderId -> "redirect:/orders/" + orderId + "?newOrder=true");
                     } else {
                         String msg = URLEncoder.encode(

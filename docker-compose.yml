@@ -27,6 +27,27 @@ services:
       timeout: 5s
       retries: 5
 
+  keycloak:
+    image: quay.io/keycloak/keycloak:26.0
+    container_name: keycloak-my-market
+    command: start-dev --import-realm
+    restart: always
+    environment:
+      KC_BOOTSTRAP_ADMIN_USERNAME: admin
+      KC_BOOTSTRAP_ADMIN_PASSWORD: admin
+      KC_HTTP_PORT: 8180
+      KC_HEALTH_ENABLED: "true"
+    ports:
+      - "8180:8180"
+    volumes:
+      - ./keycloak/realm-export.json:/opt/keycloak/data/import/realm-export.json:ro
+    healthcheck:
+      test: ["CMD-SHELL", "exec 3<>/dev/tcp/localhost/8180"]
+      interval: 10s
+      timeout: 5s
+      retries: 20
+      start_period: 30s
+
   payment-service:
     build:
       context: .
@@ -37,6 +58,10 @@ services:
       - "8081:8081"
     environment:
       PAYMENT_INITIAL_BALANCE: 100000
+      KEYCLOAK_ISSUER_URI: http://keycloak:8180/realms/market-realm
+    depends_on:
+      keycloak:
+        condition: service_healthy
 
   market-app:
     build:
@@ -54,8 +79,12 @@ services:
       REDIS_HOST: redis
       REDIS_PORT: 6379
       PAYMENT_SERVICE_URL: http://payment-service:8081
+      KEYCLOAK_TOKEN_URI: http://keycloak:8180/realms/market-realm/protocol/openid-connect/token
+      KEYCLOAK_CLIENT_SECRET: market-app-secret
     depends_on:
       postgres:
         condition: service_healthy
       redis:
+        condition: service_healthy
+      keycloak:
         condition: service_healthy

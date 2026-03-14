@@ -78,21 +78,22 @@ public class ItemCacheService {
     }
 
     public Mono<Long> getCachedCount(String search) {
-        String key = "items:count:" + (search != null ? search : "");
+        String key = String.format("items:count:%s", search != null ? search : "");
         return redisTemplate.opsForValue().get(key)
                 .map(Long::parseLong);
     }
 
     public Mono<Long> cacheCount(String search, Long count) {
-        String key = "items:count:" + (search != null ? search : "");
+        String key = String.format("items:count:%s", search != null ? search : "");
         return redisTemplate.opsForValue().set(key, String.valueOf(count), ttl)
                 .thenReturn(count);
     }
 
     private String buildItemsKey(String search, String sort, int pageSize, int pageNumber) {
-        return "items:search:" + (search != null ? search : "")
-                + ":sort:" + (sort != null ? sort : "NO")
-                + ":size:" + pageSize
-                + ":page:" + pageNumber;
+        return String.format("items:search:%s:sort:%s:size:%d:page:%d",
+                search != null ? search : "",
+                sort != null ? sort : "NO",
+                pageSize,
+                pageNumber);
     }
 }

@@ -5,15 +5,18 @@ import com.my.project.mymarketapp.entity.Item;
 import com.my.project.mymarketapp.repository.CartItemRepository;
 import com.my.project.mymarketapp.repository.OrderItemRepository;
 import com.my.project.mymarketapp.repository.OrderRepository;
+import com.my.project.mymarketapp.security.AppUserDetails;
 import com.my.project.mymarketapp.service.ItemCacheService;
 import com.my.project.mymarketapp.service.PaymentClientService;
 import com.my.project.payment.client.model.PaymentResponse;
+import java.util.Collections;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.boot.webtestclient.autoconfigure.AutoConfigureWebTestClient;
+import org.springframework.context.ApplicationContext;
 import org.springframework.context.annotation.Import;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.reactive.server.WebTestClient;
 import org.springframework.web.reactive.function.BodyInserters;
@@ -26,13 +29,17 @@ import static org.mockito.ArgumentMatchers.anyList;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.when;
+import static org.springframework.security.test.web.reactive.server.SecurityMockServerConfigurers.csrf;
+import static org.springframework.security.test.web.reactive.server.SecurityMockServerConfigurers.mockUser;
+import static org.springframework.security.test.web.reactive.server.SecurityMockServerConfigurers.springSecurity;
 
-@SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
+@SpringBootTest
 @Import(TestcontainersConfiguration.class)
-@AutoConfigureWebTestClient
 class OrdersControllerIntegrationTest {
 
     @Autowired
+    private ApplicationContext context;
+
     private WebTestClient webTestClient;
 
     @Autowired
@@ -50,8 +57,18 @@ class OrdersControllerIntegrationTest {
     @MockitoBean
     private ItemCacheService itemCacheService;
 
+    private static AppUserDetails testUser() {
+        return new AppUserDetails(1L, "user1", "password",
+                Collections.singletonList(new SimpleGrantedAuthority("ROLE_USER")));
+    }
+
     @BeforeEach
     void cleanup() {
+        webTestClient = WebTestClient.bindToApplicationContext(context)
+                .apply(springSecurity())
+                .configureClient()
+                .build();
+
         // Order items must be deleted before orders due to FK constraint.
         orderItemRepository.deleteAll()
                 .then(orderRepository.deleteAll())
@@ -81,7 +98,8 @@ class OrdersControllerIntegrationTest {
 
     @Test
     void getOrders_empty() {
-        webTestClient.get().uri("/orders")
+        webTestClient.mutateWith(mockUser(testUser()))
+                .get().uri("/orders")
                 .exchange()
                 .expectStatus().isOk()
                 .expectBody(String.class)
@@ -96,7 +114,8 @@ class OrdersControllerIntegrationTest {
     void getOrders_afterPurchase() {
         addItemAndBuy(1L);
 
-        webTestClient.get().uri("/orders")
+        webTestClient.mutateWith(mockUser(testUser()))
+                .get().uri("/orders")
                 .exchange()
                 .expectStatus().isOk()
                 .expectBody(String.class)
@@ -111,7 +130,8 @@ class OrdersControllerIntegrationTest {
         Long orderId = addItemAndBuy(1L);
 
         // GET /orders/{id} without ?newOrder param (defaults to false)
-        webTestClient.get().uri("/orders/{id}", orderId)
+        webTestClient.mutateWith(mockUser(testUser()))
+                .get().uri("/orders/{id}", orderId)
                 .exchange()
                 .expectStatus().isOk()
                 .expectBody(String.class)
@@ -127,13 +147,15 @@ class OrdersControllerIntegrationTest {
     }
 
     private Long addItemAndBuy(long itemId) {
-        webTestClient.post().uri("/items")
+        webTestClient.mutateWith(mockUser(testUser())).mutateWith(csrf())
+                .post().uri("/items")
                 .body(BodyInserters.fromFormData("id", String.valueOf(itemId))
                         .with("action", "PLUS"))
                 .exchange()
                 .expectStatus().is3xxRedirection();
 
-        String location = webTestClient.post().uri("/buy")
+        String location = webTestClient.mutateWith(mockUser(testUser())).mutateWith(csrf())
+                .post().uri("/buy")
                 .exchange()
                 .expectStatus().is3xxRedirection()
                 .returnResult(String.class)
