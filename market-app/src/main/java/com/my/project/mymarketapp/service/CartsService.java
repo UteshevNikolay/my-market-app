@@ -34,15 +34,15 @@ public class CartsService {
         this.itemMapper = itemMapper;
     }
 
-    public Flux<ItemDto> getCartItems() {
-        return cartItemRepository.findAll()
+    public Flux<ItemDto> getCartItems(Long userId) {
+        return cartItemRepository.findAllByUserId(userId)
                 .concatMap(cartItem -> itemRepository.findById(cartItem.getItemId())
                         .map(item -> itemMapper.toDto(item, cartItem.getCount()))
                 );
     }
 
-    public Mono<Void> updateCartItem(Long id, String action) {
-        return cartItemRepository.findByItemId(id)
+    public Mono<Void> updateCartItem(Long id, String action, Long userId) {
+        return cartItemRepository.findByUserIdAndItemId(userId, id)
                 .flatMap(cartItem -> {
                     if ("PLUS".equals(action)) {
                         cartItem.setCount(cartItem.getCount() + 1);
@@ -62,8 +62,8 @@ public class CartsService {
                 .then();
     }
 
-    public Mono<Integer> getTotal() {
-        return cartItemRepository.findAll()
+    public Mono<Integer> getTotal(Long userId) {
+        return cartItemRepository.findAllByUserId(userId)
                 .flatMap(cartItem -> itemRepository.findById(cartItem.getItemId())
                         .map(item -> item.getPrice() * cartItem.getCount())
                 )
@@ -71,10 +71,11 @@ public class CartsService {
     }
 
     @Transactional
-    public Mono<Long> createOrder() {
-        return cartItemRepository.findAll().collectList()
+    public Mono<Long> createOrder(Long userId) {
+        return cartItemRepository.findAllByUserId(userId).collectList()
                 .flatMap(cartItems -> {
                     Order order = new Order();
+                    order.setUserId(userId);
                     return orderRepository.save(order)
                             .flatMap(savedOrder ->
                                     Flux.fromIterable(cartItems)
@@ -90,7 +91,7 @@ public class CartsService {
                                             )
                                             .collectList()
                                             .flatMapMany(orderItems -> orderItemRepository.saveAll(orderItems))
-                                            .then(cartItemRepository.deleteAll(cartItems))
+                                            .then(cartItemRepository.deleteAllByUserId(userId))
                                             .thenReturn(savedOrder.getId())
                             );
                 });

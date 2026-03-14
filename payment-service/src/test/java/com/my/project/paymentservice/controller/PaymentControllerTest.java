@@ -1,22 +1,40 @@
 package com.my.project.paymentservice.controller;
 
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.boot.webtestclient.autoconfigure.AutoConfigureWebTestClient;
+import org.springframework.context.ApplicationContext;
 import org.springframework.http.MediaType;
+import org.springframework.security.oauth2.jwt.ReactiveJwtDecoder;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.reactive.server.WebTestClient;
 
-@SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
-@AutoConfigureWebTestClient
+import static org.springframework.security.test.web.reactive.server.SecurityMockServerConfigurers.mockJwt;
+import static org.springframework.security.test.web.reactive.server.SecurityMockServerConfigurers.springSecurity;
+
+@SpringBootTest
 class PaymentControllerTest {
 
-    @Autowired
     private WebTestClient webTestClient;
+
+    @Autowired
+    private ApplicationContext context;
+
+    @MockitoBean
+    private ReactiveJwtDecoder reactiveJwtDecoder;
+
+    @BeforeEach
+    void setUp() {
+        webTestClient = WebTestClient.bindToApplicationContext(context)
+                .apply(springSecurity())
+                .configureClient()
+                .build();
+    }
 
     @Test
     void getBalance_returns200WithBalance() {
-        webTestClient.get().uri("/api/payment/balance")
+        webTestClient.mutateWith(mockJwt()).get().uri("/api/payment/balance")
                 .exchange()
                 .expectStatus().isOk()
                 .expectBody()
@@ -26,7 +44,8 @@ class PaymentControllerTest {
     @Test
     void processPayment_success_returns200WithDeductedBalance() {
         // First get the current balance
-        Integer initialBalance = webTestClient.get().uri("/api/payment/balance")
+        Integer initialBalance = webTestClient.mutateWith(mockJwt()).get().uri("/api/payment" +
+                        "/balance")
                 .exchange()
                 .expectStatus().isOk()
                 .expectBody(java.util.Map.class)
@@ -35,7 +54,7 @@ class PaymentControllerTest {
                 .get("balance") instanceof Number n ? n.intValue() : 0;
 
         // Make a payment
-        webTestClient.post().uri("/api/payment/pay")
+        webTestClient.mutateWith(mockJwt()).post().uri("/api/payment/pay")
                 .contentType(MediaType.APPLICATION_JSON)
                 .bodyValue("{\"amount\": 1000}")
                 .exchange()
@@ -47,7 +66,7 @@ class PaymentControllerTest {
 
     @Test
     void processPayment_insufficientFunds_returns200WithFailure() {
-        webTestClient.post().uri("/api/payment/pay")
+        webTestClient.mutateWith(mockJwt()).post().uri("/api/payment/pay")
                 .contentType(MediaType.APPLICATION_JSON)
                 .bodyValue("{\"amount\": 999999999}")
                 .exchange()
@@ -59,7 +78,7 @@ class PaymentControllerTest {
 
     @Test
     void processPayment_negativeAmount_returnsFalse() {
-        webTestClient.post().uri("/api/payment/pay")
+        webTestClient.mutateWith(mockJwt()).post().uri("/api/payment/pay")
                 .contentType(MediaType.APPLICATION_JSON)
                 .bodyValue("{\"amount\": -100}")
                 .exchange()

@@ -28,13 +28,13 @@ public class OrdersService {
         this.itemMapper = itemMapper;
     }
 
-    public Flux<OrderDto> getAllOrders() {
-        return orderRepository.findAll()
+    public Flux<OrderDto> getAllOrders(Long userId) {
+        return orderRepository.findAllByUserId(userId)
                 .concatMap(this::buildOrderDto);
     }
 
-    public Mono<OrderDto> getOrderById(Long id) {
-        return orderRepository.findById(id)
+    public Mono<OrderDto> getOrderById(Long id, Long userId) {
+        return orderRepository.findByIdAndUserId(id, userId)
                 .switchIfEmpty(Mono.error(new IllegalArgumentException("Order not found: " + id)))
                 .flatMap(this::buildOrderDto);
     }

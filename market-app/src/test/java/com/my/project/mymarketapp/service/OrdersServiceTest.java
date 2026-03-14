@@ -20,10 +20,14 @@ import reactor.core.publisher.Mono;
 import reactor.test.StepVerifier;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.ArgumentMatchers.anyLong;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
 class OrdersServiceTest {
+
+    private static final Long USER_ID = 1L;
 
     @Mock
     private OrderRepository orderRepository;
@@ -54,7 +58,7 @@ class OrdersServiceTest {
         ItemDto dto1 = new ItemDto(10L, "Widget", "desc-10", 100, "img-10.png", 1);
         ItemDto dto2 = new ItemDto(20L, "Gadget", "desc-20", 200, "img-20.png", 2);
 
-        when(orderRepository.findAll()).thenReturn(Flux.fromIterable(List.of(order1, order2)));
+        when(orderRepository.findAllByUserId(USER_ID)).thenReturn(Flux.fromIterable(List.of(order1, order2)));
 
         when(orderItemRepository.findByOrderId(1L)).thenReturn(Flux.just(oi1));
         when(itemRepository.findById(10L)).thenReturn(Mono.just(item1));
@@ -64,7 +68,7 @@ class OrdersServiceTest {
         when(itemRepository.findById(20L)).thenReturn(Mono.just(item2));
         when(itemMapper.orderItemToDto(item2, oi2)).thenReturn(dto2);
 
-        StepVerifier.create(ordersService.getAllOrders().collectList())
+        StepVerifier.create(ordersService.getAllOrders(USER_ID).collectList())
                 .assertNext(result -> {
                     assertThat(result).hasSize(2);
 
@@ -87,9 +91,9 @@ class OrdersServiceTest {
 
     @Test
     void getAllOrders_empty() {
-        when(orderRepository.findAll()).thenReturn(Flux.empty());
+        when(orderRepository.findAllByUserId(USER_ID)).thenReturn(Flux.empty());
 
-        StepVerifier.create(ordersService.getAllOrders().collectList())
+        StepVerifier.create(ordersService.getAllOrders(USER_ID).collectList())
                 .assertNext(result -> assertThat(result).isEmpty())
                 .verifyComplete();
     }
@@ -101,12 +105,12 @@ class OrdersServiceTest {
         OrderItem oi = buildOrderItem(1L, 10L, 10L, 99, 1);
         ItemDto expected = new ItemDto(10L, "Widget", "desc-10", 99, "img-10.png", 1);
 
-        when(orderRepository.findById(10L)).thenReturn(Mono.just(order));
+        when(orderRepository.findByIdAndUserId(anyLong(), eq(USER_ID))).thenReturn(Mono.just(order));
         when(orderItemRepository.findByOrderId(10L)).thenReturn(Flux.just(oi));
         when(itemRepository.findById(10L)).thenReturn(Mono.just(item));
         when(itemMapper.orderItemToDto(item, oi)).thenReturn(expected);
 
-        StepVerifier.create(ordersService.getOrderById(10L))
+        StepVerifier.create(ordersService.getOrderById(10L, USER_ID))
                 .assertNext(result -> {
                     assertThat(result.id()).isEqualTo(10L);
                     assertThat(result.items()).containsExactly(expected);
@@ -117,9 +121,9 @@ class OrdersServiceTest {
 
     @Test
     void getOrderById_notFound() {
-        when(orderRepository.findById(99L)).thenReturn(Mono.empty());
+        when(orderRepository.findByIdAndUserId(anyLong(), eq(USER_ID))).thenReturn(Mono.empty());
 
-        StepVerifier.create(ordersService.getOrderById(99L))
+        StepVerifier.create(ordersService.getOrderById(99L, USER_ID))
                 .expectErrorSatisfies(error -> {
                     assertThat(error).isInstanceOf(IllegalArgumentException.class);
                     assertThat(error.getMessage()).contains("99");
