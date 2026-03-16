@@ -32,7 +32,8 @@ public class ItemsService {
         this.itemCacheService = itemCacheService;
     }
 
-    public Flux<ItemDto> getItems(String search, String sort, int pageSize, int pageNumber) {
+    public Flux<ItemDto> getItems(String search, String sort, int pageSize, int pageNumber,
+                                  Long userId) {
         Pageable pageable = buildPageable(pageSize, pageNumber, sort);
 
         return itemCacheService.getCachedItems(search, sort, pageSize, pageNumber)
@@ -44,31 +45,39 @@ public class ItemsService {
                                         pageSize, pageNumber, items))
                                 .flatMapMany(Flux::fromIterable)
                 )
-                .concatMap(item -> cartItemRepository.findByItemId(item.getId())
-                        .map(CartItem::getCount)
-                        .defaultIfEmpty(0)
-                        .map(count -> itemMapper.toDto(item, count))
-                );
+                .concatMap(item -> {
+                    if (userId == null) {
+                        return Mono.just(itemMapper.toDto(item, 0));
+                    }
+                    return cartItemRepository.findByUserIdAndItemId(userId, item.getId())
+                            .map(CartItem::getCount)
+                            .defaultIfEmpty(0)
+                            .map(count -> itemMapper.toDto(item, count));
+                });
     }
 
-    public Mono<ItemDto> getItemById(Long id) {
+    public Mono<ItemDto> getItemById(Long id, Long userId) {
         return itemCacheService.getCachedItem(id)
                 .switchIfEmpty(
                         itemRepository.findById(id)
                                 .flatMap(item -> itemCacheService.cacheItem(id, item))
                 )
-                .flatMap(item -> cartItemRepository.findByItemId(item.getId())
-                        .map(CartItem::getCount)
-                        .defaultIfEmpty(0)
-                        .map(count -> itemMapper.toDto(item, count))
-                )
+                .flatMap(item -> {
+                    if (userId == null) {
+                        return Mono.just(itemMapper.toDto(item, 0));
+                    }
+                    return cartItemRepository.findByUserIdAndItemId(userId, item.getId())
+                            .map(CartItem::getCount)
+                            .defaultIfEmpty(0)
+                            .map(count -> itemMapper.toDto(item, count));
+                })
                 .defaultIfEmpty(ItemDto.empty());
     }
 
     @Transactional
-    public Mono<Void> updateItemCount(Long id, String action) {
+    public Mono<Void> updateItemCount(Long id, String action, Long userId) {
         if ("PLUS".equals(action)) {
-            return cartItemRepository.findByItemId(id)
+            return cartItemRepository.findByUserIdAndItemId(userId, id)
                     .flatMap(cartItem -> {
                         cartItem.setCount(cartItem.getCount() + 1);
                         return cartItemRepository.save(cartItem);
@@ -80,13 +89,14 @@ public class ItemsService {
                                     .flatMap(item -> {
                                         CartItem cartItem = new CartItem();
                                         cartItem.setItemId(item.getId());
+                                        cartItem.setUserId(userId);
                                         cartItem.setCount(1);
                                         return cartItemRepository.save(cartItem);
                                     })
                     ))
                     .then();
         } else if ("MINUS".equals(action)) {
-            return cartItemRepository.findByItemId(id)
+            return cartItemRepository.findByUserIdAndItemId(userId, id)
                     .flatMap(cartItem -> {
                         if (cartItem.getCount() > 1) {
                             cartItem.setCount(cartItem.getCount() - 1);

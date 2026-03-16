@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<html lang="en" xmlns:th="http://www.thymeleaf.org" xmlns:sec="http://www.thymeleaf.org/extras/spring-security">
 
 <head>
     <meta charset="utf-8">
@@ -16,9 +16,13 @@
                     <h2>
                         <span class="badge text-bg-success">Витрина магазина</span>
                     </h2>
-                    <a href="/orders" class="btn btn-secondary ms-auto bi bi-file-earmark-text"> Заказы</a>
-                    <a href="/cart/items" class="btn btn-secondary bi bi-cart4"> Корзина</a>
+                    <a href="/orders" class="btn btn-secondary ms-auto bi bi-file-earmark-text" sec:authorize="isAuthenticated()"> Заказы</a>
+                    <a href="/cart/items" class="btn btn-secondary bi bi-cart4" sec:authorize="isAuthenticated()"> Корзина</a>
                     <a href="/items" class="btn btn-secondary bi bi-arrow-left-square"> Главная</a>
+                    <form th:action="@{/logout}" method="post" sec:authorize="isAuthenticated()" class="d-inline">
+                        <button class="btn btn-outline-danger bi bi-box-arrow-right" type="submit"> Выйти (<span sec:authentication="name"></span>)</button>
+                    </form>
+                    <a href="/login" class="btn btn-primary bi bi-box-arrow-in-right" sec:authorize="isAnonymous()"> Войти</a>
                 </div>
             </div>
         </div>
@@ -32,7 +36,7 @@
                             <span class="badge text-bg-success justify-content-end" th:text="${item.price()}+' руб.'"></span>
                         </h5>
                         <p class="card-text" th:text="${item.description()}"></p>
-                        <form th:action="@{${'/items/'+item.id()}}" method="post">
+                        <form th:action="@{${'/items/'+item.id()}}" method="post" sec:authorize="isAuthenticated()">
                             <div class="hstack gap-3">
                                 <button type="submit" class="btn btn-outline-secondary" name="action" value="MINUS">-</button>
                                 <span th:text="${item.count()}"></span>

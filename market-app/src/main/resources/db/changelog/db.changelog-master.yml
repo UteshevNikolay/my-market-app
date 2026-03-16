@@ -236,3 +236,109 @@ databaseChangeLog:
               - column:
                   name: img_path
                   value: "images/item8.svg"
+
+  - changeSet:
+      id: 6-create-app-user-table
+      author: nikolaiu
+      changes:
+        - createTable:
+            tableName: app_user
+            columns:
+              - column:
+                  name: id
+                  type: BIGSERIAL
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: username
+                  type: VARCHAR(255)
+                  constraints:
+                    nullable: false
+                    unique: true
+              - column:
+                  name: password
+                  type: VARCHAR(255)
+                  constraints:
+                    nullable: false
+
+  - changeSet:
+      id: 7-seed-users
+      author: nikolaiu
+      comment: "Seed predefined users. Passwords are BCrypt-encoded: user1 = user1pass, user2 = user2pass"
+      changes:
+        - insert:
+            tableName: app_user
+            columns:
+              - column:
+                  name: username
+                  value: "user1"
+              - column:
+                  name: password
+                  # Plain text: user1pass
+                  value: "$2b$10$ycPcDF64eVqz0j066JjI4eLk/0dlGjKQEQDYPcsA./CsZ6HBHWRLi"
+        - insert:
+            tableName: app_user
+            columns:
+              - column:
+                  name: username
+                  value: "user2"
+              - column:
+                  name: password
+                  # Plain text: user2pass
+                  value: "$2b$10$tXs1quMxkJOOn/3NJkIl4eMr.8rmnYfVI5wIxKDvDn1nl.fMtudg."
+
+  - changeSet:
+      id: 8-clear-order-items
+      author: nikolaiu
+      changes:
+        - delete:
+            tableName: order_item
+
+  - changeSet:
+      id: 9-clear-customer-orders
+      author: nikolaiu
+      changes:
+        - delete:
+            tableName: customer_order
+
+  - changeSet:
+      id: 10-clear-cart-items
+      author: nikolaiu
+      changes:
+        - delete:
+            tableName: cart_item
+
+  - changeSet:
+      id: 11-add-user-id-to-cart-item
+      author: nikolaiu
+      changes:
+        - addColumn:
+            tableName: cart_item
+            columns:
+              - column:
+                  name: user_id
+                  type: BIGINT
+                  constraints:
+                    nullable: false
+                    foreignKeyName: fk_cart_item_user
+                    references: app_user(id)
+        - addUniqueConstraint:
+            tableName: cart_item
+            columnNames: user_id, item_id
+            constraintName: uk_cart_item_user_item
+
+  - changeSet:
+      id: 12-add-user-id-to-customer-order
+      author: nikolaiu
+      changes:
+        - addColumn:
+            tableName: customer_order
+            columns:
+              - column:
+                  name: user_id
+                  type: BIGINT
+                  constraints:
+                    nullable: false
+                    foreignKeyName: fk_customer_order_user
+                    references: app_user(id)

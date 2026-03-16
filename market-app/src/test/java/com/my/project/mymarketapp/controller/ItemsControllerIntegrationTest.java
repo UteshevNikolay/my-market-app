@@ -3,14 +3,17 @@ package com.my.project.mymarketapp.controller;
 import com.my.project.mymarketapp.config.TestcontainersConfiguration;
 import com.my.project.mymarketapp.entity.Item;
 import com.my.project.mymarketapp.repository.CartItemRepository;
+import com.my.project.mymarketapp.security.AppUserDetails;
 import com.my.project.mymarketapp.service.ItemCacheService;
+import java.util.Collections;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.boot.webtestclient.autoconfigure.AutoConfigureWebTestClient;
+import org.springframework.context.ApplicationContext;
 import org.springframework.context.annotation.Import;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.reactive.server.WebTestClient;
 import org.springframework.web.reactive.function.BodyInserters;
@@ -23,13 +26,17 @@ import static org.mockito.ArgumentMatchers.anyList;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.when;
+import static org.springframework.security.test.web.reactive.server.SecurityMockServerConfigurers.csrf;
+import static org.springframework.security.test.web.reactive.server.SecurityMockServerConfigurers.mockUser;
+import static org.springframework.security.test.web.reactive.server.SecurityMockServerConfigurers.springSecurity;
 
-@SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
+@SpringBootTest
 @Import(TestcontainersConfiguration.class)
-@AutoConfigureWebTestClient
 class ItemsControllerIntegrationTest {
 
     @Autowired
+    private ApplicationContext context;
+
     private WebTestClient webTestClient;
 
     @Autowired
@@ -38,8 +45,18 @@ class ItemsControllerIntegrationTest {
     @MockitoBean
     private ItemCacheService itemCacheService;
 
+    private static AppUserDetails testUser() {
+        return new AppUserDetails(1L, "user1", "password",
+                Collections.singletonList(new SimpleGrantedAuthority("ROLE_USER")));
+    }
+
     @BeforeEach
     void setUpCacheMocks() {
+        webTestClient = WebTestClient.bindToApplicationContext(context)
+                .apply(springSecurity())
+                .configureClient()
+                .build();
+
         // Cache always misses so integration tests exercise the real DB logic
         when(itemCacheService.getCachedItems(anyString(), anyString(), anyInt(), anyInt()))
                 .thenReturn(Mono.empty());
@@ -98,14 +115,16 @@ class ItemsControllerIntegrationTest {
     @Test
     void updateItemCount_addsToCart() {
         // POST /items with action=PLUS should redirect
-        webTestClient.post().uri("/items")
+        webTestClient.mutateWith(mockUser(testUser())).mutateWith(csrf())
+                .post().uri("/items")
                 .body(BodyInserters.fromFormData("id", "1")
                         .with("action", "PLUS"))
                 .exchange()
                 .expectStatus().is3xxRedirection();
 
         // GET /items/1 and verify count shows 1 in the cart
-        webTestClient.get().uri("/items/1")
+        webTestClient.mutateWith(mockUser(testUser()))
+                .get().uri("/items/1")
                 .exchange()
                 .expectStatus().isOk()
                 .expectBody(String.class)

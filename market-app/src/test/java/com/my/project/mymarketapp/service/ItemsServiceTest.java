@@ -37,6 +37,8 @@ import static org.mockito.Mockito.when;
 @MockitoSettings(strictness = Strictness.LENIENT)
 class ItemsServiceTest {
 
+    private static final Long USER_ID = 1L;
+
     @Mock
     private ItemRepository itemRepository;
 
@@ -79,13 +81,13 @@ class ItemsServiceTest {
 
         when(itemRepository.findByTitleContainingIgnoreCase(any(), any(Pageable.class)))
                 .thenReturn(Flux.fromIterable(items));
-        when(cartItemRepository.findByItemId(anyLong())).thenReturn(Mono.empty());
+        when(cartItemRepository.findByUserIdAndItemId(anyLong(), anyLong())).thenReturn(Mono.empty());
 
         for (Item item : items) {
             when(itemMapper.toDto(eq(item), eq(0))).thenReturn(buildItemDto(item.getId()));
         }
 
-        StepVerifier.create(itemsService.getItems("", "NO", 8, 1).collectList())
+        StepVerifier.create(itemsService.getItems("", "NO", 8, 1, USER_ID).collectList())
                 .assertNext(result -> {
                     assertThat(result).hasSize(5);
                     assertThat(result).noneMatch(dto -> dto.id() == -1L);
@@ -98,7 +100,7 @@ class ItemsServiceTest {
         when(itemRepository.findByTitleContainingIgnoreCase(eq("test"), any(Pageable.class)))
                 .thenReturn(Flux.empty());
 
-        StepVerifier.create(itemsService.getItems("test", "NO", 8, 1))
+        StepVerifier.create(itemsService.getItems("test", "NO", 8, 1, USER_ID))
                 .verifyComplete();
 
         verify(itemRepository).findByTitleContainingIgnoreCase(eq("test"), any(Pageable.class));
@@ -111,7 +113,7 @@ class ItemsServiceTest {
         when(itemRepository.findByTitleContainingIgnoreCase(any(), any(Pageable.class)))
                 .thenReturn(Flux.empty());
 
-        StepVerifier.create(itemsService.getItems("", "ALPHA", 8, 1))
+        StepVerifier.create(itemsService.getItems("", "ALPHA", 8, 1, USER_ID))
                 .verifyComplete();
 
         verify(itemRepository).findByTitleContainingIgnoreCase(any(), pageableCaptor.capture());
@@ -126,7 +128,7 @@ class ItemsServiceTest {
         when(itemRepository.findByTitleContainingIgnoreCase(any(), any(Pageable.class)))
                 .thenReturn(Flux.empty());
 
-        StepVerifier.create(itemsService.getItems("", "PRICE", 8, 1))
+        StepVerifier.create(itemsService.getItems("", "PRICE", 8, 1, USER_ID))
                 .verifyComplete();
 
         verify(itemRepository).findByTitleContainingIgnoreCase(any(), pageableCaptor.capture());
@@ -143,12 +145,12 @@ class ItemsServiceTest {
         cartItem.setCount(3);
 
         when(itemRepository.findById(10L)).thenReturn(Mono.just(item));
-        when(cartItemRepository.findByItemId(10L)).thenReturn(Mono.just(cartItem));
+        when(cartItemRepository.findByUserIdAndItemId(USER_ID, 10L)).thenReturn(Mono.just(cartItem));
 
         ItemDto expected = new ItemDto(10L, "Widget", "desc-10", 99, "img-10.png", 3);
         when(itemMapper.toDto(item, 3)).thenReturn(expected);
 
-        StepVerifier.create(itemsService.getItemById(10L))
+        StepVerifier.create(itemsService.getItemById(10L, USER_ID))
                 .assertNext(result -> {
                     verify(itemMapper).toDto(item, 3);
                     assertThat(result).isEqualTo(expected);
@@ -160,7 +162,7 @@ class ItemsServiceTest {
     void getItemById_notFound() {
         when(itemRepository.findById(99L)).thenReturn(Mono.empty());
 
-        StepVerifier.create(itemsService.getItemById(99L))
+        StepVerifier.create(itemsService.getItemById(99L, USER_ID))
                 .assertNext(result -> {
                     assertThat(result).isEqualTo(ItemDto.empty());
                     verify(itemMapper, never()).toDto(any(), any());
@@ -172,15 +174,16 @@ class ItemsServiceTest {
     void updateItemCount_plusNewItem() {
         Item item = buildItem(1L, "NewItem", 50);
 
-        when(cartItemRepository.findByItemId(1L)).thenReturn(Mono.empty());
+        when(cartItemRepository.findByUserIdAndItemId(USER_ID, 1L)).thenReturn(Mono.empty());
         when(itemRepository.findById(1L)).thenReturn(Mono.just(item));
 
         CartItem savedCartItem = new CartItem();
         savedCartItem.setItemId(1L);
+        savedCartItem.setUserId(USER_ID);
         savedCartItem.setCount(1);
         when(cartItemRepository.save(any(CartItem.class))).thenReturn(Mono.just(savedCartItem));
 
-        StepVerifier.create(itemsService.updateItemCount(1L, "PLUS"))
+        StepVerifier.create(itemsService.updateItemCount(1L, "PLUS", USER_ID))
                 .verifyComplete();
 
         ArgumentCaptor<CartItem> cartItemCaptor = ArgumentCaptor.forClass(CartItem.class);
@@ -189,6 +192,7 @@ class ItemsServiceTest {
         CartItem saved = cartItemCaptor.getValue();
         assertThat(saved.getCount()).isEqualTo(1);
         assertThat(saved.getItemId()).isEqualTo(1L);
+        assertThat(saved.getUserId()).isEqualTo(USER_ID);
     }
 
     @Test
@@ -201,10 +205,10 @@ class ItemsServiceTest {
         updated.setItemId(2L);
         updated.setCount(3);
 
-        when(cartItemRepository.findByItemId(2L)).thenReturn(Mono.just(existing));
+        when(cartItemRepository.findByUserIdAndItemId(USER_ID, 2L)).thenReturn(Mono.just(existing));
         when(cartItemRepository.save(any(CartItem.class))).thenReturn(Mono.just(updated));
 
-        StepVerifier.create(itemsService.updateItemCount(2L, "PLUS"))
+        StepVerifier.create(itemsService.updateItemCount(2L, "PLUS", USER_ID))
                 .verifyComplete();
 
         ArgumentCaptor<CartItem> cartItemCaptor = ArgumentCaptor.forClass(CartItem.class);
@@ -222,10 +226,10 @@ class ItemsServiceTest {
         updated.setItemId(3L);
         updated.setCount(2);
 
-        when(cartItemRepository.findByItemId(3L)).thenReturn(Mono.just(existing));
+        when(cartItemRepository.findByUserIdAndItemId(USER_ID, 3L)).thenReturn(Mono.just(existing));
         when(cartItemRepository.save(any(CartItem.class))).thenReturn(Mono.just(updated));
 
-        StepVerifier.create(itemsService.updateItemCount(3L, "MINUS"))
+        StepVerifier.create(itemsService.updateItemCount(3L, "MINUS", USER_ID))
                 .verifyComplete();
 
         ArgumentCaptor<CartItem> cartItemCaptor = ArgumentCaptor.forClass(CartItem.class);
@@ -240,10 +244,10 @@ class ItemsServiceTest {
         existing.setItemId(4L);
         existing.setCount(1);
 
-        when(cartItemRepository.findByItemId(4L)).thenReturn(Mono.just(existing));
+        when(cartItemRepository.findByUserIdAndItemId(USER_ID, 4L)).thenReturn(Mono.just(existing));
         when(cartItemRepository.delete(existing)).thenReturn(Mono.empty());
 
-        StepVerifier.create(itemsService.updateItemCount(4L, "MINUS"))
+        StepVerifier.create(itemsService.updateItemCount(4L, "MINUS", USER_ID))
                 .verifyComplete();
 
         verify(cartItemRepository).delete(existing);

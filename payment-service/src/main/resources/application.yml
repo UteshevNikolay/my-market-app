@@ -1,6 +1,13 @@
 server:
   port: 8081
 
+spring:
+  security:
+    oauth2:
+      resourceserver:
+        jwt:
+          issuer-uri: ${KEYCLOAK_ISSUER_URI:http://localhost:8180/realms/market-realm}
+
 payment:
   initial-balance: ${PAYMENT_INITIAL_BALANCE:100000}
 

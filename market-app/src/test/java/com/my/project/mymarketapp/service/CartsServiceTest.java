@@ -24,12 +24,16 @@ import reactor.test.StepVerifier;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyList;
+import static org.mockito.ArgumentMatchers.anyLong;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
 class CartsServiceTest {
+
+    private static final Long USER_ID = 1L;
 
     @Mock
     private CartItemRepository cartItemRepository;
@@ -56,7 +60,7 @@ class CartsServiceTest {
         CartItem cartItem1 = buildCartItem(10L, 1L, 1);
         CartItem cartItem2 = buildCartItem(20L, 2L, 2);
 
-        when(cartItemRepository.findAll()).thenReturn(Flux.fromIterable(List.of(cartItem1, cartItem2)));
+        when(cartItemRepository.findAllByUserId(USER_ID)).thenReturn(Flux.fromIterable(List.of(cartItem1, cartItem2)));
         when(itemRepository.findById(1L)).thenReturn(Mono.just(item1));
         when(itemRepository.findById(2L)).thenReturn(Mono.just(item2));
 
@@ -65,7 +69,7 @@ class CartsServiceTest {
         when(itemMapper.toDto(item1, 1)).thenReturn(dto1);
         when(itemMapper.toDto(item2, 2)).thenReturn(dto2);
 
-        StepVerifier.create(cartsService.getCartItems().collectList())
+        StepVerifier.create(cartsService.getCartItems(USER_ID).collectList())
                 .assertNext(result -> {
                     assertThat(result).hasSize(2);
                     assertThat(result).containsExactly(dto1, dto2);
@@ -77,9 +81,9 @@ class CartsServiceTest {
 
     @Test
     void getCartItems_emptyCart() {
-        when(cartItemRepository.findAll()).thenReturn(Flux.empty());
+        when(cartItemRepository.findAllByUserId(USER_ID)).thenReturn(Flux.empty());
 
-        StepVerifier.create(cartsService.getCartItems().collectList())
+        StepVerifier.create(cartsService.getCartItems(USER_ID).collectList())
                 .assertNext(result -> {
                     assertThat(result).isEmpty();
                     verify(itemMapper, never()).toDto(any(), any());
@@ -92,10 +96,10 @@ class CartsServiceTest {
         CartItem cartItem = buildCartItem(10L, 1L, 2);
         CartItem updated = buildCartItem(10L, 1L, 3);
 
-        when(cartItemRepository.findByItemId(1L)).thenReturn(Mono.just(cartItem));
+        when(cartItemRepository.findByUserIdAndItemId(eq(USER_ID), anyLong())).thenReturn(Mono.just(cartItem));
         when(cartItemRepository.save(any(CartItem.class))).thenReturn(Mono.just(updated));
 
-        StepVerifier.create(cartsService.updateCartItem(1L, "PLUS"))
+        StepVerifier.create(cartsService.updateCartItem(1L, "PLUS", USER_ID))
                 .verifyComplete();
 
         ArgumentCaptor<CartItem> captor = ArgumentCaptor.forClass(CartItem.class);
@@ -109,10 +113,10 @@ class CartsServiceTest {
         CartItem cartItem = buildCartItem(20L, 2L, 3);
         CartItem updated = buildCartItem(20L, 2L, 2);
 
-        when(cartItemRepository.findByItemId(2L)).thenReturn(Mono.just(cartItem));
+        when(cartItemRepository.findByUserIdAndItemId(eq(USER_ID), anyLong())).thenReturn(Mono.just(cartItem));
         when(cartItemRepository.save(any(CartItem.class))).thenReturn(Mono.just(updated));
 
-        StepVerifier.create(cartsService.updateCartItem(2L, "MINUS"))
+        StepVerifier.create(cartsService.updateCartItem(2L, "MINUS", USER_ID))
                 .verifyComplete();
 
         ArgumentCaptor<CartItem> captor = ArgumentCaptor.forClass(CartItem.class);
@@ -125,10 +129,10 @@ class CartsServiceTest {
     void updateCartItem_minusDelete() {
         CartItem cartItem = buildCartItem(30L, 3L, 1);
 
-        when(cartItemRepository.findByItemId(3L)).thenReturn(Mono.just(cartItem));
+        when(cartItemRepository.findByUserIdAndItemId(eq(USER_ID), anyLong())).thenReturn(Mono.just(cartItem));
         when(cartItemRepository.delete(cartItem)).thenReturn(Mono.empty());
 
-        StepVerifier.create(cartsService.updateCartItem(3L, "MINUS"))
+        StepVerifier.create(cartsService.updateCartItem(3L, "MINUS", USER_ID))
                 .verifyComplete();
 
         verify(cartItemRepository).delete(cartItem);
@@ -139,10 +143,10 @@ class CartsServiceTest {
     void updateCartItem_delete() {
         CartItem cartItem = buildCartItem(40L, 4L, 5);
 
-        when(cartItemRepository.findByItemId(4L)).thenReturn(Mono.just(cartItem));
+        when(cartItemRepository.findByUserIdAndItemId(eq(USER_ID), anyLong())).thenReturn(Mono.just(cartItem));
         when(cartItemRepository.delete(cartItem)).thenReturn(Mono.empty());
 
-        StepVerifier.create(cartsService.updateCartItem(4L, "DELETE"))
+        StepVerifier.create(cartsService.updateCartItem(4L, "DELETE", USER_ID))
                 .verifyComplete();
 
         verify(cartItemRepository).delete(cartItem);
@@ -151,9 +155,9 @@ class CartsServiceTest {
 
     @Test
     void updateCartItem_notFound() {
-        when(cartItemRepository.findByItemId(99L)).thenReturn(Mono.empty());
+        when(cartItemRepository.findByUserIdAndItemId(eq(USER_ID), anyLong())).thenReturn(Mono.empty());
 
-        StepVerifier.create(cartsService.updateCartItem(99L, "PLUS"))
+        StepVerifier.create(cartsService.updateCartItem(99L, "PLUS", USER_ID))
                 .verifyComplete();
 
         verify(cartItemRepository, never()).save(any());
@@ -167,21 +171,21 @@ class CartsServiceTest {
         CartItem cartItem1 = buildCartItem(10L, 1L, 2);
         CartItem cartItem2 = buildCartItem(20L, 2L, 3);
 
-        when(cartItemRepository.findAll()).thenReturn(Flux.fromIterable(List.of(cartItem1, cartItem2)));
+        when(cartItemRepository.findAllByUserId(USER_ID)).thenReturn(Flux.fromIterable(List.of(cartItem1, cartItem2)));
         when(itemRepository.findById(1L)).thenReturn(Mono.just(item1));
         when(itemRepository.findById(2L)).thenReturn(Mono.just(item2));
 
         // 100 * 2 + 50 * 3 = 200 + 150 = 350
-        StepVerifier.create(cartsService.getTotal())
+        StepVerifier.create(cartsService.getTotal(USER_ID))
                 .assertNext(total -> assertThat(total).isEqualTo(350))
                 .verifyComplete();
     }
 
     @Test
     void getTotal_emptyCart() {
-        when(cartItemRepository.findAll()).thenReturn(Flux.empty());
+        when(cartItemRepository.findAllByUserId(USER_ID)).thenReturn(Flux.empty());
 
-        StepVerifier.create(cartsService.getTotal())
+        StepVerifier.create(cartsService.getTotal(USER_ID))
                 .assertNext(total -> assertThat(total).isEqualTo(0))
                 .verifyComplete();
     }
@@ -196,6 +200,7 @@ class CartsServiceTest {
 
         Order savedOrder = new Order();
         savedOrder.setId(42L);
+        savedOrder.setUserId(USER_ID);
 
         OrderItem oi1 = new OrderItem();
         oi1.setOrderId(42L);
@@ -209,25 +214,23 @@ class CartsServiceTest {
         oi2.setCount(3);
         oi2.setPrice(200);
 
-        when(cartItemRepository.findAll()).thenReturn(Flux.fromIterable(cartItems));
+        when(cartItemRepository.findAllByUserId(USER_ID)).thenReturn(Flux.fromIterable(cartItems));
         when(orderRepository.save(any(Order.class))).thenReturn(Mono.just(savedOrder));
         when(itemRepository.findById(1L)).thenReturn(Mono.just(item1));
         when(itemRepository.findById(2L)).thenReturn(Mono.just(item2));
-        when(orderItemRepository.saveAll(anyList())).thenReturn(Flux.fromIterable(List.of(oi1, oi2)));
-        when(cartItemRepository.deleteAll(cartItems)).thenReturn(Mono.empty());
+        when(orderItemRepository.saveAll(anyList())).thenReturn(Flux.fromIterable(List.of(oi1,
+                oi2)));
+        when(cartItemRepository.deleteAllByUserId(USER_ID)).thenReturn(Mono.empty());
 
-        StepVerifier.create(cartsService.createOrder())
+        StepVerifier.create(cartsService.createOrder(USER_ID))
                 .assertNext(returnedId -> assertThat(returnedId).isEqualTo(42L))
                 .verifyComplete();
 
         // Verify order was saved
         verify(orderRepository).save(any(Order.class));
 
-        // Verify cart was cleared with the original cart items
-        @SuppressWarnings("unchecked")
-        ArgumentCaptor<List<CartItem>> deleteCaptor = ArgumentCaptor.forClass(List.class);
-        verify(cartItemRepository).deleteAll(deleteCaptor.capture());
-        assertThat(deleteCaptor.getValue()).containsExactlyInAnyOrderElementsOf(cartItems);
+        // Verify cart was cleared for the user
+        verify(cartItemRepository).deleteAllByUserId(USER_ID);
 
         // Verify order items were saved with correct data
         @SuppressWarnings("unchecked")

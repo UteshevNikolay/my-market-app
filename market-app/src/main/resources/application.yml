@@ -16,6 +16,18 @@ spring:
     redis:
       host: ${REDIS_HOST:localhost}
       port: ${REDIS_PORT:6379}
+  security:
+    oauth2:
+      client:
+        registration:
+          keycloak:
+            client-id: market-app-client
+            client-secret: ${KEYCLOAK_CLIENT_SECRET:market-app-secret}
+            authorization-grant-type: client_credentials
+            scope: openid
+        provider:
+          keycloak:
+            token-uri: ${KEYCLOAK_TOKEN_URI:http://localhost:8180/realms/market-realm/protocol/openid-connect/token}
 
 logging:
   level:
